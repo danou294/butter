@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "412954167340",
+    "project_id": "butter-begin",
+    "storage_bucket": "butter-begin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412954167340:android:793eead7577a30276a6989",
+        "android_client_info": {
+          "package_name": "com.example.butter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMz5dmP-GxaVbIHY4HXQdeWsWELXz-9vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
