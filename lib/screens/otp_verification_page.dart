@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
+
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
+import 'welcome_page.dart'; // <-- à créer si pas encore fait
 
 class OTPVerificationPage extends StatefulWidget {
   final String phoneNumber;
   final String verificationId;
+  final String prenom;
+  final String dateNaissance;
 
   const OTPVerificationPage({
     super.key,
     required this.phoneNumber,
     required this.verificationId,
+    required this.prenom,
+    required this.dateNaissance,
   });
 
   @override
@@ -19,6 +27,7 @@ class OTPVerificationPage extends StatefulWidget {
 class _OTPVerificationPageState extends State<OTPVerificationPage> {
   final TextEditingController _codeController = TextEditingController();
   final _authService = AuthService();
+  final _userService = UserService();
   bool _loading = false;
 
   void _verifyCode() async {
@@ -29,10 +38,32 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     }
 
     setState(() => _loading = true);
+
     try {
       await _authService.signInWithOTP(widget.verificationId, code);
-      _showSnack('Connexion réussie 🎉');
-      // Redirige vers page d’accueil ici si tu veux
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+        final exists = await _userService.userExists(uid);
+
+        if (!exists) {
+          await _userService.createUser(
+            uid: uid,
+            phone: widget.phoneNumber,
+            prenom: widget.prenom,
+            dateNaissance: widget.dateNaissance,
+          );
+        }
+
+        // Redirige vers la page de bienvenue
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => WelcomePage(prenom: widget.prenom),
+          ),
+        );
+      }
     } catch (e) {
       _showSnack('Code incorrect ou expiré ❌');
     } finally {
@@ -45,7 +76,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
   }
 
   void _resendCode() {
-    // Tu peux ajouter ici la logique pour renvoyer le code avec Firebase
     _showSnack('Fonction renvoyer un code à implémenter');
   }
 
@@ -102,8 +132,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                     appContext: context,
                     length: 6,
                     controller: _codeController,
-                    obscureText: false,
-                    autoFocus: true,
                     animationType: AnimationType.fade,
                     pinTheme: PinTheme(
                       shape: PinCodeFieldShape.box,

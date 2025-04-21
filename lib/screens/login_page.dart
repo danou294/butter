@@ -1,33 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import 'otp_verification_page.dart';
 
-class RegistrationPage extends StatefulWidget {
-  const RegistrationPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<RegistrationPage> createState() => _RegistrationPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _RegistrationPageState extends State<RegistrationPage> {
-  final _prenomController = TextEditingController();
-  final _dateController = TextEditingController();
+class _LoginPageState extends State<LoginPage> {
   final _phoneController = TextEditingController();
   final _authService = AuthService();
-
   bool _loading = false;
 
   void _onSuivantPressed() async {
-    final prenom = _prenomController.text.trim();
-    final dateNaissance = _dateController.text.trim();
     final rawPhone = _phoneController.text.trim();
     final phone = formatPhoneNumber(rawPhone);
-
-    if (prenom.isEmpty || dateNaissance.isEmpty) {
-      _showSnack('Merci de remplir tous les champs.');
-      return;
-    }
 
     if (phone.isEmpty || !_isValidPhone(phone)) {
       _showSnack('Numéro invalide, utilise +33...');
@@ -44,11 +33,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => OTPVerificationPage(
+              builder: (_) => OTPVerificationPage(
                 phoneNumber: phone,
                 verificationId: verificationId,
-                prenom: prenom,
-                dateNaissance: dateNaissance,
+                prenom: '',
+                dateNaissance: '',
               ),
             ),
           );
@@ -109,17 +98,20 @@ class _RegistrationPageState extends State<RegistrationPage> {
         centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
             const SizedBox(height: 16),
-            const Text(
-              'Devenir membre',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Se connecter',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+              ),
             ),
             const SizedBox(height: 32),
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -127,49 +119,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
               child: Column(
                 children: [
                   TextField(
-                    controller: _prenomController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prénom',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () async {
-                      final DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime(2000),
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime.now(),
-                        locale: const Locale('fr', 'FR'),
-                      );
-                      if (pickedDate != null) {
-                        final formattedDate = DateFormat('dd/MM/yyyy').format(pickedDate);
-                        setState(() {
-                          _dateController.text = formattedDate;
-                        });
-                      }
-                    },
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: _dateController,
-                        decoration: const InputDecoration(
-                          labelText: 'Date de naissance',
-                          hintText: 'JJ/MM/AAAA',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
                     controller: _phoneController,
+                    keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       labelText: 'Numéro de téléphone',
                       hintText: '+33 X XX XX XX XX',
                       border: OutlineInputBorder(),
                     ),
-                    keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 8),
                   const Align(
@@ -195,23 +151,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 ),
                 onPressed: _loading ? null : _onSuivantPressed,
                 child: _loading
-                    ? const CircularProgressIndicator(
-                        color: Colors.white,
-                      )
+                    ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
                         'Suivant',
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(height: 2, width: 40, color: Colors.black12),
-                const SizedBox(width: 6),
-                Container(height: 2, width: 40, color: Colors.black),
-              ],
             ),
             const SizedBox(height: 24),
           ],
