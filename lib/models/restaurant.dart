@@ -1,25 +1,30 @@
 class Restaurant {
-  final String nom;
+  final String id;
+  final String vraiNom;
   final String arrondissement;
   final String typeCuisine;
   final String prix;
-  final List<String> photoUrls;
+  final String tag;
+  List<String> photoUrls;
 
   Restaurant({
-    required this.nom,
+    required this.id,
+    required this.vraiNom,
     required this.arrondissement,
     required this.typeCuisine,
     required this.prix,
-    required this.photoUrls,
+    required this.tag,
+    this.photoUrls = const [],
   });
 
-  factory Restaurant.fromMap(Map<String, dynamic> data) {
+  factory Restaurant.fromFirestore(Map<String, dynamic> data, String docId) {
     return Restaurant(
-      nom: data['nom'] ?? '',
+      id: docId,
+      vraiNom: data['vrai_nom'] ?? '',
       arrondissement: data['arrondissement'] ?? '',
       typeCuisine: data['type_cuisine'] ?? '',
       prix: data['prix'] ?? '',
-      photoUrls: List<String>.from(data['photo_urls'] ?? []),
+      tag: data['tag'] ?? '',
     );
   }
 }

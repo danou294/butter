@@ -4,7 +4,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
-import 'welcome_page.dart'; // <-- à créer si pas encore fait
+import 'welcome_page.dart'; // Crée cette page avec un simple "Bienvenue"
 
 class OTPVerificationPage extends StatefulWidget {
   final String phoneNumber;
@@ -25,13 +25,14 @@ class OTPVerificationPage extends StatefulWidget {
 }
 
 class _OTPVerificationPageState extends State<OTPVerificationPage> {
-  final TextEditingController _codeController = TextEditingController();
+  final _codeController = TextEditingController();
   final _authService = AuthService();
   final _userService = UserService();
   bool _loading = false;
 
   void _verifyCode() async {
     final code = _codeController.text.trim();
+
     if (code.length != 6) {
       _showSnack('Code invalide');
       return;
@@ -40,13 +41,16 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     setState(() => _loading = true);
 
     try {
+      // Connexion Firebase avec le code OTP
       await _authService.signInWithOTP(widget.verificationId, code);
 
       final user = FirebaseAuth.instance.currentUser;
+
       if (user != null) {
         final uid = user.uid;
-        final exists = await _userService.userExists(uid);
 
+        // Enregistrement Firestore si l'utilisateur n'existe pas encore
+        final exists = await _userService.userExists(uid);
         if (!exists) {
           await _userService.createUser(
             uid: uid,
@@ -56,13 +60,17 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           );
         }
 
-        // Redirige vers la page de bienvenue
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => WelcomePage(prenom: widget.prenom),
-          ),
-        );
+        // Navigation vers l'accueil ou page de bienvenue
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => WelcomePage(prenom: widget.prenom),
+            ),
+          );
+        }
+      } else {
+        _showSnack('Utilisateur introuvable après vérification.');
       }
     } catch (e) {
       _showSnack('Code incorrect ou expiré ❌');
@@ -71,12 +79,8 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     }
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  void _resendCode() {
-    _showSnack('Fonction renvoyer un code à implémenter');
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -105,9 +109,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             const Text(
-              'Devenir membre',
+              'Entre le code reçu',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 32),
@@ -145,17 +149,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                     keyboardType: TextInputType.number,
                     onChanged: (_) {},
                   ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _resendCode,
-                    child: const Text(
-                      'Renvoyer un code',
-                      style: TextStyle(
-                        fontSize: 13,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -165,7 +158,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
               height: 52,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
+                  backgroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -174,19 +167,10 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                 child: _loading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'Suivant',
+                        'Valider',
                         style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(height: 2, width: 40, color: Colors.black12),
-                const SizedBox(width: 6),
-                Container(height: 2, width: 40, color: Colors.black),
-              ],
             ),
             const SizedBox(height: 24),
           ],

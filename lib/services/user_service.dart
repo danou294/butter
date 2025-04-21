@@ -2,15 +2,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class UserService {
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Vérifie si un utilisateur existe déjà
+  /// Vérifie si un utilisateur existe dans Firestore via son UID
   Future<bool> userExists(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     return doc.exists;
   }
 
-  /// Crée un utilisateur en Firestore
+  /// Récupère un utilisateur Firestore par son numéro de téléphone
+  Future<Map<String, dynamic>?> getUserByPhone(String phone) async {
+    final query = await _firestore
+        .collection('users')
+        .where('phone', isEqualTo: phone)
+        .limit(1)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      return query.docs.first.data();
+    }
+
+    return null;
+  }
+
+  /// Crée un nouvel utilisateur Firestore
   Future<void> createUser({
     required String uid,
     required String phone,
@@ -18,6 +33,7 @@ class UserService {
     required String dateNaissance,
   }) async {
     await _firestore.collection('users').doc(uid).set({
+      'uid': uid,
       'phone': phone,
       'prenom': prenom.trim(),
       'dateNaissance': dateNaissance,
@@ -25,7 +41,7 @@ class UserService {
     });
   }
 
-  /// Récupère le prénom de l'utilisateur connecté
+  /// Récupère le prénom de l'utilisateur actuellement connecté
   Future<String?> fetchCurrentUserPrenom() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
@@ -34,7 +50,7 @@ class UserService {
     return doc.data()?['prenom'];
   }
 
-  /// Fonction de secours : récupérer l'objet complet de l'utilisateur
+  /// Récupère toutes les données de l'utilisateur actuellement connecté
   Future<Map<String, dynamic>?> getUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;

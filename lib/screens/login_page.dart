@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import 'otp_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -12,6 +13,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _phoneController = TextEditingController();
   final _authService = AuthService();
+  final _userService = UserService();
   bool _loading = false;
 
   void _onSuivantPressed() async {
@@ -26,6 +28,17 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
+      // Étape 1 : chercher un utilisateur avec ce numéro
+      final userDoc = await _userService.getUserByPhone(phone);
+      if (userDoc == null) {
+        _showSnack("Aucun compte n'est associé à ce numéro.");
+        setState(() => _loading = false);
+        return;
+      }
+
+      final prenom = userDoc['prenom'] ?? '';
+
+      // Étape 2 : envoyer le code OTP
       await _authService.verifyPhoneNumber(
         phoneNumber: phone,
         onCodeSent: (verificationId) {
@@ -36,8 +49,8 @@ class _LoginPageState extends State<LoginPage> {
               builder: (_) => OTPVerificationPage(
                 phoneNumber: phone,
                 verificationId: verificationId,
-                prenom: '',
-                dateNaissance: '',
+                prenom: prenom,
+                dateNaissance: '', // inutile ici, déjà stockée
               ),
             ),
           );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'home_page.dart';
+import 'favorites_page.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -14,12 +16,18 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _pages = [
     const HomePage(),
-    const Placeholder(), // Page temporaire pour "Compte"
+    const FavoritesPage(),
+    const Center(
+      child: Text(
+        'Compte',
+        style: TextStyle(fontSize: 24),
+      ),
+    ),
   ];
 
   void _onItemTapped(int index) async {
-    if (index == 1) {
-      // Déconnexion si on clique sur l’onglet compte
+    if (index == 2) {
+      // Déconnexion à la sélection de l’onglet "Compte"
       await FirebaseAuth.instance.signOut();
     } else {
       setState(() => _selectedIndex = index);
@@ -40,6 +48,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Explorer',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bookmark_border),
+            label: 'Favoris',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
