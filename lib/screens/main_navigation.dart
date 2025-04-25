@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'home_page.dart';
 import 'favorites_page.dart';
+import 'welcome_landing.dart'; // ← Redirection après logout
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,18 +18,20 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = [
     const HomePage(),
     const FavoritesPage(),
-    const Center(
-      child: Text(
-        'Compte',
-        style: TextStyle(fontSize: 24),
-      ),
-    ),
+    const Center(child: Text('Compte', style: TextStyle(fontSize: 24))),
   ];
 
   void _onItemTapped(int index) async {
     if (index == 2) {
-      // Déconnexion à la sélection de l’onglet "Compte"
       await FirebaseAuth.instance.signOut();
+
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeLanding()),
+          (route) => false,
+        );
+      }
     } else {
       setState(() => _selectedIndex = index);
     }

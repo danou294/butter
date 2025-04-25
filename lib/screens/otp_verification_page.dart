@@ -4,7 +4,7 @@ import 'package:pin_code_fields/pin_code_fields.dart';
 
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
-import 'welcome_page.dart'; // Crée cette page avec un simple "Bienvenue"
+import 'welcome_page.dart';
 
 class OTPVerificationPage extends StatefulWidget {
   final String phoneNumber;
@@ -49,7 +49,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       if (user != null) {
         final uid = user.uid;
 
-        // Enregistrement Firestore si l'utilisateur n'existe pas encore
+        // Si l'utilisateur n'existe pas encore en base, on le crée
         final exists = await _userService.userExists(uid);
         if (!exists) {
           await _userService.createUser(
@@ -60,7 +60,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           );
         }
 
-        // Navigation vers l'accueil ou page de bienvenue
+        // ✅ Redirection vers la page de bienvenue
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -70,7 +70,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           );
         }
       } else {
-        _showSnack('Utilisateur introuvable après vérification.');
+        _showSnack('Erreur : utilisateur introuvable.');
       }
     } catch (e) {
       _showSnack('Code incorrect ou expiré ❌');

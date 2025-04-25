@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
+import 'main_navigation.dart';
 
 class WelcomePage extends StatelessWidget {
   final String prenom;
@@ -13,24 +13,19 @@ class WelcomePage extends StatelessWidget {
         onTap: () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
+            MaterialPageRoute(builder: (_) => const MainNavigation()),
           );
         },
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 🌆 Fond
             Image.asset(
               'assets/images/background-app.png',
               fit: BoxFit.cover,
             ),
-
-            // 🧊 Filtre noir semi-transparent
             Container(
               color: Colors.black.withOpacity(0.45),
             ),
-
-            // 🌟 Contenu principal
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -134,10 +129,7 @@ class WelcomePage extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 32,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,

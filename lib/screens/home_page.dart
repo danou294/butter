@@ -55,7 +55,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F6F2),
+      backgroundColor: const Color(0xFFFAF7F3),
       body: Column(
         children: [
           _buildHeader(),
@@ -97,9 +97,7 @@ class _HomePageState extends State<HomePage> {
                 Column(
                   children: [
                     OutlinedButton(
-                      onPressed: () {
-                        // TODO: Navigation vers la recherche personnalisée
-                      },
+                      onPressed: () {},
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.white),
                         foregroundColor: Colors.white,
@@ -166,15 +164,18 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildGrid() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 2 / 2.5,
-        children: _restaurants
-            .map((restaurant) => RestaurantCard(restaurant: restaurant))
-            .toList(),
+      padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.72,
+        ),
+        itemCount: _restaurants.length,
+        itemBuilder: (context, index) {
+          return RestaurantCard(restaurant: _restaurants[index]);
+        },
       ),
     );
   }
