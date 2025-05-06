@@ -41,15 +41,12 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     setState(() => _loading = true);
 
     try {
-      // Connexion Firebase avec le code OTP
       await _authService.signInWithOTP(widget.verificationId, code);
 
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
         final uid = user.uid;
-
-        // Si l'utilisateur n'existe pas encore en base, on le crée
         final exists = await _userService.userExists(uid);
         if (!exists) {
           await _userService.createUser(
@@ -60,7 +57,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
           );
         }
 
-        // ✅ Redirection vers la page de bienvenue
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -85,95 +81,136 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF7F3),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'BUTTER',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Serif',
-            color: Colors.black,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            const Text(
-              'Entre le code reçu',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF1EFEB),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+
+              Column(
                 children: [
-                  const Text(
-                    'Code de vérification',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Expanded(child: SizedBox()),
+                      Image(
+                        image: AssetImage('assets/images/LogoName_black.png'),
+                        height: 22,
+                      ),
+                      Expanded(child: SizedBox()),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                  PinCodeTextField(
-                    appContext: context,
-                    length: 6,
-                    controller: _codeController,
-                    animationType: AnimationType.fade,
-                    pinTheme: PinTheme(
-                      shape: PinCodeFieldShape.box,
-                      borderRadius: BorderRadius.circular(8),
-                      fieldHeight: 50,
-                      fieldWidth: 40,
-                      activeColor: Colors.black,
-                      inactiveColor: Colors.grey,
-                      selectedColor: Colors.black87,
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) {},
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Image.asset(
+                          'assets/icon/precedent.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Vérification',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'InriaSans',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                    ],
                   ),
                 ],
               ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+
+              SizedBox(height: screenHeight * 0.22),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                onPressed: _loading ? null : _verifyCode,
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Valider',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Code de vérification',
+                      style: TextStyle(
+                        fontFamily: 'InriaSans',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    PinCodeTextField(
+                      appContext: context,
+                      length: 6,
+                      controller: _codeController,
+                      animationType: AnimationType.fade,
+                      pinTheme: PinTheme(
+                        shape: PinCodeFieldShape.box,
+                        borderRadius: BorderRadius.circular(8),
+                        fieldHeight: 55,
+                        fieldWidth: 44,
+                        activeColor: Colors.black,
+                        inactiveColor: Colors.grey,
+                        selectedColor: Colors.black87,
+                        inactiveFillColor: Color(0xFFF1EFEB),
+                        selectedFillColor: Color(0xFFF1EFEB),
+                        activeFillColor: Color(0xFFF1EFEB),
+                      ),
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) {},
+                      backgroundColor: Colors.white,
+                      enableActiveFill: true,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+
+              const Spacer(),
+
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _loading ? null : _verifyCode,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Valider',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'InriaSans',
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

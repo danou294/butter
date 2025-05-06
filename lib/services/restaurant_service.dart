@@ -7,16 +7,19 @@ class RestaurantService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<List<Restaurant>> fetchRestaurants() async {
-    print('[RestaurantService] 🔄 Fetching restaurants from Firestore...');
+    print('[RestaurantService] 🔄 Clearing cache before fetching...');
+    await clearCache();
+
     try {
       final snapshot = await _db.collection('restaurants').get();
 
       final restaurants = snapshot.docs.map((doc) {
         final restaurant = Restaurant.fromFirestore(doc.data(), doc.id);
 
-        // Enregistre les URLs des photos en fonction du tagInitial
         if (restaurant.tagInitial.isNotEmpty) {
-          restaurant.photoUrls = _generatePhotoUrls(restaurant.tagInitial.first);
+          final tag = restaurant.tagInitial.first;
+          restaurant.photoUrls = _generateAllPhotoUrls(tag);
+          restaurant.nameTagUrl = _generateNameTagUrl(tag);
         }
 
         return restaurant;
@@ -30,13 +33,24 @@ class RestaurantService {
     }
   }
 
-  List<String> _generatePhotoUrls(String tagInitial) {
-    final List<int> suffixes = [2, 3];
-    return suffixes.map((i) {
-      final fileName = '$tagInitial$i.png';
-      final encodedPath = Uri.encodeComponent(fileName);
-      return 'https://firebasestorage.googleapis.com/v0/b/butter-begin.firebasestorage.app/o/$encodedPath?alt=media';
+  List<String> _generateAllPhotoUrls(String tagInitial) {
+    final fileNames = [
+      '${tagInitial}1.png',
+      '${tagInitial}2.png',
+      '${tagInitial}3.png',
+      '${tagInitial}4.png',
+      '${tagInitial}5.png',
+    ];
+    return fileNames.map((fileName) {
+      final encoded = Uri.encodeComponent(fileName);
+      return 'https://firebasestorage.googleapis.com/v0/b/butter-begin.firebasestorage.app/o/$encoded?alt=media';
     }).toList();
+  }
+
+  String _generateNameTagUrl(String tagInitial) {
+    final fileName = '${tagInitial}1.png';
+    final encoded = Uri.encodeComponent(fileName);
+    return 'https://firebasestorage.googleapis.com/v0/b/butter-begin.firebasestorage.app/o/$encoded?alt=media';
   }
 
   Future<void> cacheRestaurants(List<Restaurant> restaurants) async {
@@ -53,17 +67,19 @@ class RestaurantService {
       'reservation': r.reservation,
       'instagram': r.instagram,
       'plus': r.plus,
-      'cuisine': r.cuisine,
-      'priceRange': r.priceRange,
       'tagInitial': r.tagInitial,
       'restaurantType': r.restaurantType,
       'moment': r.moment,
       'locationType': r.locationType,
       'ambiance': r.ambiance,
+      'priceRange': r.priceRange,
+      'cuisine': r.cuisine,
       'diet': r.diet,
       'extras': r.extras,
       'photoUrls': r.photoUrls,
+      'nameTagUrl': r.nameTagUrl,
     })).toList();
+
     await prefs.setStringList('restaurants_cache', encoded);
     print('[RestaurantService] 💾 Cached ${encoded.length} restaurants');
   }
@@ -92,16 +108,17 @@ class RestaurantService {
         reservation: data['reservation'] ?? '',
         instagram: data['instagram'] ?? '',
         plus: data['plus'] ?? '',
-        cuisine: List<String>.from(data['cuisine'] ?? []),
-        priceRange: List<String>.from(data['priceRange'] ?? []),
         tagInitial: List<String>.from(data['tagInitial'] ?? []),
         restaurantType: List<String>.from(data['restaurantType'] ?? []),
         moment: List<String>.from(data['moment'] ?? []),
         locationType: List<String>.from(data['locationType'] ?? []),
         ambiance: List<String>.from(data['ambiance'] ?? []),
+        priceRange: List<String>.from(data['priceRange'] ?? []),
+        cuisine: List<String>.from(data['cuisine'] ?? []),
         diet: List<String>.from(data['diet'] ?? []),
         extras: List<String>.from(data['extras'] ?? []),
         photoUrls: List<String>.from(data['photoUrls'] ?? []),
+        nameTagUrl: data['nameTagUrl'],
       );
     }).toList();
 

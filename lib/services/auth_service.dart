@@ -15,7 +15,7 @@ class AuthService {
       verificationCompleted: onVerificationCompleted,
       verificationFailed: onVerificationFailed,
       codeSent: (verificationId, _) => onCodeSent(verificationId),
-      codeAutoRetrievalTimeout: (verificationId) {},
+      codeAutoRetrievalTimeout: (_) {},
     );
   }
 
@@ -31,6 +31,11 @@ class AuthService {
   /// Connexion auto avec credential (Android only)
   Future<void> signInWithCredential(PhoneAuthCredential credential) async {
     await _auth.signInWithCredential(credential);
+  }
+
+  /// Connexion anonyme
+  Future<void> signInAnonymously() async {
+    await _auth.signInAnonymously();
   }
 
   /// Déconnexion

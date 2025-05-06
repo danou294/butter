@@ -16,9 +16,16 @@ class _LoginPageState extends State<LoginPage> {
   final _userService = UserService();
   bool _loading = false;
 
+  String get formattedPhone => formatPhoneNumber(_phoneController.text.trim());
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(() => setState(() {}));
+  }
+
   void _onSuivantPressed() async {
-    final rawPhone = _phoneController.text.trim();
-    final phone = formatPhoneNumber(rawPhone);
+    final phone = formattedPhone;
 
     if (phone.isEmpty || !_isValidPhone(phone)) {
       _showSnack('Numéro invalide, utilise +33...');
@@ -28,7 +35,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
 
     try {
-      // Étape 1 : chercher un utilisateur avec ce numéro
       final userDoc = await _userService.getUserByPhone(phone);
       if (userDoc == null) {
         _showSnack("Aucun compte n'est associé à ce numéro.");
@@ -38,7 +44,6 @@ class _LoginPageState extends State<LoginPage> {
 
       final prenom = userDoc['prenom'] ?? '';
 
-      // Étape 2 : envoyer le code OTP
       await _authService.verifyPhoneNumber(
         phoneNumber: phone,
         onCodeSent: (verificationId) {
@@ -50,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
                 phoneNumber: phone,
                 verificationId: verificationId,
                 prenom: prenom,
-                dateNaissance: '', // inutile ici, déjà stockée
+                dateNaissance: '',
               ),
             ),
           );
@@ -90,89 +95,143 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isEnabled = _isValidPhone(formattedPhone) && !_loading;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF7F3),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'BUTTER',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Serif',
-            color: Colors.black,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Se connecter',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
+      backgroundColor: const Color(0xFFF1EFEB),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              Column(
                 children: [
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Numéro de téléphone',
-                      hintText: '+33 X XX XX XX XX',
-                      border: OutlineInputBorder(),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Expanded(child: SizedBox()),
+                      Image(
+                        image: AssetImage('assets/images/LogoName_black.png'),
+                        height: 22,
+                      ),
+                      Expanded(child: SizedBox()),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Un code de vérification va t’être envoyé par SMS.',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Image.asset(
+                          'assets/icon/precedent.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Se connecter',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'InriaSans',
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                    ],
                   ),
                 ],
               ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
+
+              SizedBox(height: screenHeight * 0.22),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Numéro de téléphone',
+                      style: TextStyle(
+                        fontFamily: 'InriaSans',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: const InputDecoration(
+                        hintText: 'Ex : +33 6 00 00 00 00',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Color(0xFFF1EFEB),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Un code de vérification va t’être envoyé par SMS.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'InriaSans',
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              GestureDetector(
+                onTap: isEnabled ? _onSuivantPressed : null,
+                child: Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isEnabled ? Colors.white : const Color(0xFF535353),
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  alignment: Alignment.center,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.black,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Suivant',
+                          style: const TextStyle(
+                            fontFamily: 'InriaSans',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF111111),
+                          ),
+                        ),
                 ),
-                onPressed: _loading ? null : _onSuivantPressed,
-                child: _loading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Suivant',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
               ),
-            ),
-            const SizedBox(height: 24),
-          ],
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

@@ -6,14 +6,15 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'firebase_options.dart';
 import 'auth_gate.dart';
+// import 'pages/splash_carousel_page.dart'; // <-- Carrousel désactivé temporairement
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Activation de Firebase App Check avec le fournisseur de debug
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
     appleProvider: AppleProvider.debug,
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
         Locale('fr', 'FR'),
         Locale('en', 'US'),
       ],
+      // home: const SplashCarouselPage(), // <-- Désactivé pour les tests
       home: const AuthGate(),
     );
   }

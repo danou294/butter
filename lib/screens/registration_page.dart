@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart' as picker;
 import '../services/auth_service.dart';
 import 'otp_verification_page.dart';
 
@@ -18,21 +19,28 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   bool _loading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _prenomController.addListener(() => setState(() {}));
+    _dateController.addListener(() => setState(() {}));
+    _phoneController.addListener(() => setState(() {}));
+  }
+
+  String get formattedPhone => formatPhoneNumber(_phoneController.text.trim());
+
+  bool get isFormValid =>
+      _prenomController.text.trim().isNotEmpty &&
+      _dateController.text.trim().isNotEmpty &&
+      _isValidPhone(formattedPhone) &&
+      !_loading;
+
   void _onSuivantPressed() async {
     final prenom = _prenomController.text.trim();
     final dateNaissance = _dateController.text.trim();
-    final rawPhone = _phoneController.text.trim();
-    final phone = formatPhoneNumber(rawPhone);
+    final phone = formattedPhone;
 
-    if (prenom.isEmpty || dateNaissance.isEmpty) {
-      _showSnack('Merci de remplir tous les champs.');
-      return;
-    }
-
-    if (phone.isEmpty || !_isValidPhone(phone)) {
-      _showSnack('Numéro invalide, utilise +33...');
-      return;
-    }
+    if (!isFormValid) return;
 
     setState(() => _loading = true);
 
@@ -54,22 +62,20 @@ class _RegistrationPageState extends State<RegistrationPage> {
           );
         },
         onVerificationCompleted: (_) {},
-        onVerificationFailed: (e) {
-          _showSnack('Erreur : ${e.message}');
+        onVerificationFailed: (_) {
           setState(() => _loading = false);
         },
       );
     } catch (e) {
-      _showSnack('Une erreur est survenue.');
       setState(() => _loading = false);
     }
   }
 
   String formatPhoneNumber(String input) {
     input = input.replaceAll(' ', '').replaceAll('-', '');
-    if (input.startsWith('0')) {
+    if (input.startsWith('0') && RegExp(r'^0[67]\d{8}$').hasMatch(input)) {
       return input.replaceFirst('0', '+33');
-    } else if (input.startsWith('+33')) {
+    } else if (RegExp(r'^\+33[67]\d{8}$').hasMatch(input)) {
       return input;
     } else {
       return '';
@@ -77,144 +83,206 @@ class _RegistrationPageState extends State<RegistrationPage> {
   }
 
   bool _isValidPhone(String phone) {
-    return phone.startsWith('+33') && phone.length >= 12;
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    return RegExp(r'^\+33[67]\d{8}$').hasMatch(phone);
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF7F3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFAF7F3),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'BUTTER',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Serif',
-            color: Colors.black,
-            letterSpacing: 1.2,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 16),
-            const Text(
-              'Devenir membre',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
+      backgroundColor: const Color(0xFFF1EFEB),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              Column(
                 children: [
-                  TextField(
-                    controller: _prenomController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prénom',
-                      border: OutlineInputBorder(),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Expanded(child: SizedBox()),
+                      Image(
+                        image: AssetImage('assets/images/LogoName_black.png'),
+                        height: 22,
+                      ),
+                      Expanded(child: SizedBox()),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () async {
-                      final DateTime? pickedDate = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime(2000),
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime.now(),
-                        locale: const Locale('fr', 'FR'),
-                      );
-                      if (pickedDate != null) {
-                        final formattedDate = DateFormat('dd/MM/yyyy').format(pickedDate);
-                        setState(() {
-                          _dateController.text = formattedDate;
-                        });
-                      }
-                    },
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: _dateController,
-                        decoration: const InputDecoration(
-                          labelText: 'Date de naissance',
-                          hintText: 'JJ/MM/AAAA',
-                          border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Image.asset(
+                          'assets/icon/precedent.png',
+                          width: 24,
+                          height: 24,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(
-                      labelText: 'Numéro de téléphone',
-                      hintText: '+33 X XX XX XX XX',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Un code de vérification va t’être envoyé par SMS.',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Devenir membre',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'InriaSans',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                    ],
                   ),
                 ],
               ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
+              SizedBox(height: screenHeight * 0.12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Prénom',
+                      style: TextStyle(
+                        fontFamily: 'InriaSans',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _prenomController,
+                      decoration: const InputDecoration(
+                        hintText: 'Votre prénom',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Color(0xFFF1EFEB),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Date de naissance',
+                      style: TextStyle(
+                        fontFamily: 'InriaSans',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: () {
+                        picker.DatePicker.showDatePicker(
+                          context,
+                          showTitleActions: true,
+                          minTime: DateTime(1900),
+                          maxTime: DateTime.now(),
+                          currentTime: DateTime(2000),
+                          locale: picker.LocaleType.fr,
+                          theme: picker.DatePickerTheme(
+                            backgroundColor: Colors.white,
+                            itemStyle: const TextStyle(
+                              fontFamily: 'InriaSans',
+                              color: Colors.black,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 18,
+                            ),
+                            doneStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          onConfirm: (date) {
+                            final formattedDate = DateFormat('dd/MM/yyyy').format(date);
+                            setState(() {
+                              _dateController.text = formattedDate;
+                            });
+                          },
+                        );
+                      },
+                      child: AbsorbPointer(
+                        child: TextField(
+                          controller: _dateController,
+                          decoration: const InputDecoration(
+                            hintText: 'JJ/MM/AAAA',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFF1EFEB),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Numéro de téléphone',
+                      style: TextStyle(
+                        fontFamily: 'InriaSans',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        hintText: 'Ex : +33 6 00 00 00 00',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Color(0xFFF1EFEB),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Un code de vérification va t’être envoyé par SMS.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'InriaSans',
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: isFormValid ? _onSuivantPressed : null,
+                child: Container(
+                  height: 52,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isFormValid ? Colors.white : const Color(0xFF535353),
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  alignment: Alignment.center,
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.black)
+                      : const Text(
+                          'Suivant',
+                          style: TextStyle(
+                            fontFamily: 'InriaSans',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF111111),
+                          ),
+                        ),
                 ),
-                onPressed: _loading ? null : _onSuivantPressed,
-                child: _loading
-                    ? const CircularProgressIndicator(
-                        color: Colors.white,
-                      )
-                    : const Text(
-                        'Suivant',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(height: 2, width: 40, color: Colors.black12),
-                const SizedBox(width: 6),
-                Container(height: 2, width: 40, color: Colors.black),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );

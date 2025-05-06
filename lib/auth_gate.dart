@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'screens/main_navigation.dart';      // Onglets (Home / Compte)
-import 'screens/welcome_landing.dart';      // Page de bienvenue (non connecté)
+import 'screens/main_navigation.dart';    // Onglets de navigation principale
+import 'screens/welcome_landing.dart';    // Page d’accueil (non connecté)
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -14,14 +14,18 @@ class AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
         }
 
         if (snapshot.hasData) {
-          return const MainNavigation(); // ✅ Connecté → accueil principal
+          // ✅ Utilisateur connecté (anonyme ou authentifié)
+          return const MainNavigation();
         } else {
-          return const WelcomeLanding(); // ❌ Pas connecté → écran d’entrée
+          // ❌ Aucun utilisateur → page d’accueil
+          return const WelcomeLanding();
         }
       },
     );

@@ -50,89 +50,126 @@ class _RestaurantCardState extends State<RestaurantCard> {
     return match != null ? '750${match.group(1)!}' : '';
   }
 
-  String get _cuisine => widget.restaurant.cuisine.isNotEmpty ? widget.restaurant.cuisine.first : '';
-  String get _price => widget.restaurant.priceRange.isNotEmpty ? widget.restaurant.priceRange.first : '';
+  String get _cuisine =>
+      widget.restaurant.cuisine.isNotEmpty ? widget.restaurant.cuisine.first : '';
+
+  String get _price =>
+      widget.restaurant.priceRange.isNotEmpty ? widget.restaurant.priceRange.first : '';
 
   @override
   Widget build(BuildContext context) {
-    final photos = widget.restaurant.photoUrls.take(2).toList();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth * 0.45;
+    final cardHeight = cardWidth * 1.5;
 
-    return AspectRatio(
-      aspectRatio: 3 / 2, // Pour un look équilibré
+    return SizedBox(
+      width: cardWidth,
+      height: cardHeight,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFEBE5DC),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFFF1EFEB),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.black12),
         ),
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Infos + favori
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    '${_capitalize(_arrondissement)} | ${_capitalize(_cuisine)} | $_price',
-                    style: const TextStyle(fontSize: 11),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  onPressed: _toggleFavorite,
-                  icon: Icon(
-                    _isFavorite ? Icons.bookmark : Icons.bookmark_border,
-                    size: 18,
-                    color: Colors.black,
-                  ),
-                ),
+                _buildTopInfo(),
+                const SizedBox(height: 2),
+                _buildNameImage(),
+                const SizedBox(height: 6),
+                Expanded(child: _buildPhotoRow()),
               ],
             ),
-            Text(
-              widget.restaurant.trueName,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'CustomSerif',
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Images qui prennent tout l'espace restant
-            Expanded(
-              child: Row(
-                children: List.generate(2, (index) {
-                  final url = photos.length > index ? photos[index] : null;
-                  return Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(left: index == 1 ? 4 : 0),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.grey.shade300,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: url != null
-                          ? Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              height: double.infinity,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(strokeWidth: 1.5),
-                                );
-                              },
-                              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-                            )
-                          : const Icon(Icons.image_not_supported),
-                    ),
-                  );
-                }),
+            Positioned(
+              top: 6,
+              right: 6,
+              child: GestureDetector(
+                onTap: _toggleFavorite,
+                child: Image.asset(
+                  _isFavorite
+                      ? 'assets/navigation-tools/favoris_black.png'
+                      : 'assets/navigation-tools/favoris.png',
+                  width: 26,
+                  height: 26,
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopInfo() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 8, right: 32),
+      child: Text(
+        '${_capitalize(_arrondissement)} | ${_capitalize(_cuisine)} | $_price',
+        style: const TextStyle(
+          fontFamily: 'InriaSans',
+          fontSize: 10,
+          color: Color(0xFF535353),
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _buildNameImage() {
+    final firstImage = widget.restaurant.photoUrls.isNotEmpty
+        ? widget.restaurant.photoUrls[0]
+        : null;
+
+    return firstImage != null
+        ? Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Image.network(
+              firstImage,
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox(height: 28),
+            ),
+          )
+        : const SizedBox(height: 28);
+  }
+
+  Widget _buildPhotoRow() {
+    final images = widget.restaurant.photoUrls.skip(1).take(2).toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+      child: Row(
+        children: List.generate(2, (index) {
+          final url = images.length > index ? images[index] : null;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(left: index == 1 ? 4 : 0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7),
+                color: Colors.grey.shade300,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: url != null
+                  ? Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                    )
+                  : const Icon(Icons.image_not_supported),
+            ),
+          );
+        }),
       ),
     );
   }

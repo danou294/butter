@@ -20,6 +20,7 @@ class Restaurant {
   final List<String> diet;
   final List<String> extras;
   List<String> photoUrls;
+  String? nameTagUrl;
 
   Restaurant({
     required this.id,
@@ -43,6 +44,7 @@ class Restaurant {
     required this.diet,
     required this.extras,
     this.photoUrls = const [],
+    this.nameTagUrl,
   });
 
   factory Restaurant.fromFirestore(Map<String, dynamic> data, String docId) {
@@ -68,6 +70,8 @@ class Restaurant {
       cuisine: List<String>.from(tags['cuisine'] ?? []),
       diet: List<String>.from(tags['diet'] ?? []),
       extras: List<String>.from(tags['extras'] ?? []),
+      photoUrls: List<String>.from(data['photoUrls'] ?? []),
+      nameTagUrl: data['nameTagUrl'],
     );
   }
 
@@ -96,6 +100,7 @@ class Restaurant {
         'extras': extras,
       },
       'photoUrls': photoUrls,
+      'nameTagUrl': nameTagUrl,
     };
   }
 
