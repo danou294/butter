@@ -1,12 +1,13 @@
-import 'package:flutter/material.dart';
+// lib/screens/main_navigation.dart
 
+import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'favorites_page.dart';
-import 'search.dart';
-import 'profile_page.dart'; // ← assure-toi que ce fichier existe
+import 'search/search_page.dart';
+import 'profile_page.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  const MainNavigation({Key? key}) : super(key: key);
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
@@ -15,11 +16,11 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const SearchPage(),
-    const FavoritesPage(),
-    const ProfilePage(), // ← nouvelle page au lieu du logout
+  final List<Widget> _pages = const [
+    HomePage(),
+    SearchPage(),
+    FavoritesPage(),
+    ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -29,7 +30,10 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Affiche la page active
       body: _pages[_selectedIndex],
+
+      // Barre de navigation personnalisée
       bottomNavigationBar: Container(
         height: 90,
         decoration: const BoxDecoration(

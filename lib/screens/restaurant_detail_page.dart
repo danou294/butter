@@ -1,118 +1,140 @@
+// lib/screens/restaurant_detail_page.dart
+
 import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
 
-class RestaurantDetailPage extends StatefulWidget {
+class RestaurantDetailPage extends StatelessWidget {
   final Restaurant restaurant;
 
-  const RestaurantDetailPage({super.key, required this.restaurant});
+  const RestaurantDetailPage({Key? key, required this.restaurant})
+      : super(key: key);
 
-  @override
-  _RestaurantDetailPageState createState() => _RestaurantDetailPageState();
-}
-
-class _RestaurantDetailPageState extends State<RestaurantDetailPage> {
-  bool isFavorite = false;  // Variable pour savoir si le restaurant est dans les favoris
+  Widget _buildChipsSection(String title, List<String> items) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: items.map((e) => Chip(label: Text(e))).toList(),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final r = restaurant;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(''),
-        leading: IconButton(
-          icon: Image.asset('assets/icon/precedent.png'),  // Icon pour revenir en arrière
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Affichage des photos du restaurant côte à côte avec un slider horizontal
-            Container(
-              height: screenHeight * 0.4,
+      appBar: AppBar(title: Text(r.name)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Slider d'images
+          if (r.photoUrls.isNotEmpty)
+            SizedBox(
+              height: 200,
               child: ListView.builder(
-                scrollDirection: Axis.horizontal,  // Permet de faire défiler horizontalement
-                itemCount: widget.restaurant.photoUrls.length - 1, // Ne pas inclure la première image
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),  // Ajout du borderRadius de 10
-                      child: Image.network(
-                        widget.restaurant.photoUrls[index + 1], // Commencer à partir de l'index 1
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  );
-                },
+                scrollDirection: Axis.horizontal,
+                itemCount: r.photoUrls.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Image.asset(
+                    r.photoUrls[i],
+                    width: 300,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 16),
 
-            // Affichage du trueName en titre et bouton favoris aligné à droite
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.restaurant.trueName,  // Affichage du trueName comme titre
-                        style: TextStyle(
-                          fontFamily: 'InriaSerif',  // Utilisation de la police de la charte graphique
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),  // Réduction de la marge entre trueName et restaurantType
-                      Text(
-                        widget.restaurant.restaurantType.join(', '),
-                        style: TextStyle(
-                          fontFamily: 'InriaSerif',  // Utilisation de la police pour le restaurantType
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      // Bouton Favoris
-                      IconButton(
-                        icon: Image.asset(
-                          isFavorite ? 'assets/navigation-tools/favoris_black.png' : 'assets/navigation-tools/favoris.png',
-                          width: 50,  // Taille des icônes égale
-                          height: 50,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            isFavorite = !isFavorite;  // Toggle the favorite status
-                          });
-                        },
-                      ),
-                      // Bouton Envoyer
-                      IconButton(
-                        icon: Image.asset(
-                          'assets/restau-details-tools/send.png',
-                          width: 50,  // Taille des icônes égale
-                          height: 50,
-                        ),
-                        onPressed: () {
-                          // Ajoute ici la fonction pour partager le restaurant si nécessaire
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          const SizedBox(height: 16),
+
+          // Adresse
+          Row(
+            children: [
+              const Icon(Icons.location_on),
+              const SizedBox(width: 8),
+              Expanded(child: Text(r.fullAddress)),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Téléphone
+          if (r.phone.isNotEmpty)
+            Row(
+              children: [
+                const Icon(Icons.phone),
+                const SizedBox(width: 8),
+                Text(r.phone),
+              ],
             ),
-            const SizedBox(height: 16),
+
+          // Site web
+          if (r.website.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.link),
+                const SizedBox(width: 8),
+                Flexible(child: Text(r.website)),
+              ],
+            ),
           ],
-        ),
+
+          const SizedBox(height: 12),
+
+          // Horaires
+          if (r.hours.isNotEmpty) ...[
+            const Text('Horaires', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(r.hours),
+            const SizedBox(height: 12),
+          ],
+
+          // Commentaire (À propos)
+          if (r.commentaire.isNotEmpty) ...[
+            const Text('À propos', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(r.commentaire),
+            const SizedBox(height: 12),
+          ],
+
+          // Type de restaurant
+          _buildChipsSection('Catégories', r.restaurantType),
+
+          // Cuisine
+          _buildChipsSection('Cuisine', r.cuisine),
+
+          // Ambiance
+          _buildChipsSection('Ambiance', r.ambiance),
+
+          // Services (inclut petit-déjeuner, brunch, déjeuner, etc.)
+          _buildChipsSection('Services', r.services),
+
+          // Restrictions alimentaires
+          _buildChipsSection('Restrictions', r.restrictionsAlimentaires),
+
+          // Terrasse
+          if (r.hasTerrace) ...[
+            const Text('Terrasse', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            if (r.terraceTypes.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                children:
+                    r.terraceTypes.map((t) => Chip(label: Text(t))).toList(),
+              )
+            else
+              const Text('Terrasse disponible'),
+          ],
+        ],
       ),
     );
   }

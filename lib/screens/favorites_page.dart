@@ -1,20 +1,22 @@
+// lib/screens/favorites_page.dart
 import 'package:flutter/material.dart';
 import '../services/favorite_service.dart';
 import '../services/restaurant_service.dart';
 import '../models/restaurant.dart';
 import '../widgets/restaurant_card.dart';
 import 'main_navigation.dart';
+import 'restaurant_detail_page.dart';
 
 class FavoritesPage extends StatefulWidget {
-  const FavoritesPage({super.key});
+  const FavoritesPage({Key? key}) : super(key: key);
 
   @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
+  _FavoritesPageState createState() => _FavoritesPageState();
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
-  final _favoriteService = FavoriteService();
-  final _restaurantService = RestaurantService();
+  final FavoriteService _favoriteService = FavoriteService();
+  final RestaurantService _restaurantService = RestaurantService();
 
   List<Restaurant> _favorites = [];
   bool _loading = true;
@@ -28,18 +30,24 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Future<void> _loadFavorites() async {
     final ids = await _favoriteService.getFavoriteRestaurantIds();
 
-    final cached = await _restaurantService.loadCachedRestaurants();
-    final filteredCached = cached.where((r) => ids.contains(r.id)).toList();
-    setState(() {
-      _favorites = filteredCached;
-      _loading = false;
-    });
+    // 1) Load from cache
+    final cached = await _restaurantService.fetchFromCache();
+    final fromCache = cached.where((r) => ids.contains(r.id)).toList();
+    if (mounted) {
+      setState(() {
+        _favorites = fromCache;
+        _loading = false;
+      });
+    }
 
-    final fresh = await _restaurantService.fetchRestaurants();
-    final filteredFresh = fresh.where((r) => ids.contains(r.id)).toList();
-    setState(() {
-      _favorites = filteredFresh;
-    });
+    // 2) Load from network
+    final fresh = await _restaurantService.fetchFromNetwork();
+    final fromNetwork = fresh.where((r) => ids.contains(r.id)).toList();
+    if (mounted) {
+      setState(() {
+        _favorites = fromNetwork;
+      });
+    }
   }
 
   @override
@@ -52,11 +60,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader(headerHeight, screenWidth)),
+          SliverToBoxAdapter(
+            child: _buildHeader(headerHeight, screenWidth),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
           _loading
               ? const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()))
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : SliverToBoxAdapter(child: _buildSplitColumns()),
         ],
       ),
@@ -74,48 +85,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
       ),
       child: Container(
         padding: const EdgeInsets.only(bottom: 20),
-        color: Colors.black.withOpacity(0.45),
+        color: Colors.black54,
         child: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 10.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: width * 0.55,
-                      height: height * 0.12,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const MainNavigation()),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white),
-                          foregroundColor: Colors.white,
-                          textStyle: TextStyle(
-                            fontSize: height * 0.035,
-                            fontFamily: 'InriaSans',
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('Découvrir des nouvelles adresses'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildHeaderButton(width, height),
               const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
@@ -133,7 +109,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Text(
-                  '${_favorites.length} adresse enregistrée',
+                  '${_favorites.length} ' +
+                      (_favorites.length > 1 ? 'adresses enregistrées' : 'adresse enregistrée'),
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: height * 0.06,
@@ -148,21 +125,63 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
+  Widget _buildHeaderButton(double width, double height) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 10.0),
+        child: SizedBox(
+          width: width * 0.55,
+          height: height * 0.12,
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MainNavigation()),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.white),
+              foregroundColor: Colors.white,
+              textStyle: TextStyle(
+                fontSize: height * 0.035,
+                fontFamily: 'InriaSans',
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text('Découvrir des nouvelles adresses'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSplitColumns() {
-    List<Widget> leftColumn = [];
-    List<Widget> rightColumn = [];
+    final left = <Widget>[];
+    final right = <Widget>[];
 
     for (int i = 0; i < _favorites.length; i++) {
-      final card = RestaurantCard(restaurant: _favorites[i]);
-      final paddedCard = Padding(
+      final item = Padding(
         padding: const EdgeInsets.only(bottom: 20),
-        child: card,
+        child: GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RestaurantDetailPage(restaurant: _favorites[i]),
+            ),
+          ),
+          child: RestaurantCard(restaurant: _favorites[i]),
+        ),
       );
-
-      if (i % 2 == 0) {
-        leftColumn.add(paddedCard);
+      if (i.isEven) {
+        left.add(item);
       } else {
-        rightColumn.add(paddedCard);
+        right.add(item);
       }
     }
 
@@ -171,14 +190,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Column(children: leftColumn)),
+          Expanded(child: Column(children: left)),
           const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Column(children: rightColumn),
-            ),
-          ),
+          Expanded(child: Column(children: right)),
         ],
       ),
     );

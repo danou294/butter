@@ -1,116 +1,182 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Restaurant {
+  // Identifiants et libellés
   final String id;
   final String name;
-  final String trueName;
-  final String address;
+  final String rawName;
+
+  // Adresse
+  final String fullAddress;
+  final int arrondissement;
+
+  // Commentaires et horaires
+  final String commentaire;
+  final String hours;
+
+  // Contact
   final String phone;
-  final String email;
   final String website;
-  final String googleMaps;
-  final String reservation;
+  final String reservationLink;
   final String instagram;
-  final String plus;
-  final List<String> tagInitial;
+
+  // Liens Maps et menu
+  final String googleLink;
+  final String menuLink;
+
+  // Catégories multi-choix
   final List<String> restaurantType;
-  final List<String> moment;
-  final List<String> locationType;
   final List<String> ambiance;
-  final List<String> priceRange;
   final List<String> cuisine;
-  final List<String> diet;
-  final List<String> extras;
-  List<String> photoUrls;
-  String? nameTagUrl;
+  final List<String> priceRange;
+  final List<String> locationContext;
+  final List<String> services;
+  final List<String> restrictionsAlimentaires;
+
+  // Terrasse
+  final bool hasTerrace;
+  final List<String> terraceTypes;
+
+  // Médias
+  final List<String> photoUrls;
+  final String? nameTagUrl; // URL du logo stockée directement
 
   Restaurant({
     required this.id,
     required this.name,
-    required this.trueName,
-    required this.address,
+    required this.rawName,
+    required this.fullAddress,
+    required this.arrondissement,
+    required this.commentaire,
+    required this.hours,
     required this.phone,
-    required this.email,
     required this.website,
-    required this.googleMaps,
-    required this.reservation,
+    required this.reservationLink,
     required this.instagram,
-    required this.plus,
-    required this.tagInitial,
+    required this.googleLink,
+    required this.menuLink,
     required this.restaurantType,
-    required this.moment,
-    required this.locationType,
     required this.ambiance,
-    required this.priceRange,
     required this.cuisine,
-    required this.diet,
-    required this.extras,
+    required this.priceRange,
+    required this.locationContext,
+    required this.services,
+    required this.restrictionsAlimentaires,
+    required this.hasTerrace,
+    required this.terraceTypes,
     this.photoUrls = const [],
     this.nameTagUrl,
   });
 
-  factory Restaurant.fromFirestore(Map<String, dynamic> data, String docId) {
-    final tags = Map<String, dynamic>.from(data['tags'] ?? {});
+  /// Crée une instance à partir d'un DocumentSnapshot Firestore
+  factory Restaurant.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return Restaurant.fromMap(doc.id, data);
+  }
+
+  /// Crée une instance à partir d'un Map (cache ou Firestore)
+  factory Restaurant.fromMap(String id, Map<String, dynamic> data) {
+    List<String> extract(dynamic value) {
+      if (value == null) return [];
+      if (value is Map) {
+        return value.entries
+            .where((e) => e.value == true)
+            .map((e) => e.key.toString())
+            .toList();
+      }
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      }
+      if (value is String) {
+        if (value.contains(',')) {
+          return value.split(',').map((e) => e.trim()).toList();
+        }
+        return [value];
+      }
+      return [];
+    }
+
+    // Gestion adresse
+    final address = data['address'] as Map<String, dynamic>? ?? {};
+    final fullAddress = address['full'] as String? ?? '';
+    final arrondissementNum = address['arrondissement'];
+    final arrondissement = arrondissementNum is num
+        ? arrondissementNum.toInt()
+        : 0;
+
     return Restaurant(
-      id: docId,
-      name: data['name'] ?? '',
-      trueName: data['true_name'] ?? '',
-      address: data['address'] ?? '',
-      phone: _parsePhone(data['phone']),
-      email: data['email'] ?? '',
-      website: data['website'] ?? '',
-      googleMaps: data['google_maps'] ?? '',
-      reservation: data['reservation'] ?? '',
-      instagram: data['instagram'] ?? '',
-      plus: data['plus'] ?? '',
-      tagInitial: List<String>.from(tags['tag_initial'] ?? []),
-      restaurantType: List<String>.from(tags['restaurant_type'] ?? []),
-      moment: List<String>.from(tags['moment'] ?? []),
-      locationType: List<String>.from(tags['location_type'] ?? []),
-      ambiance: List<String>.from(tags['ambiance'] ?? []),
-      priceRange: List<String>.from(tags['price_range'] ?? []),
-      cuisine: List<String>.from(tags['cuisine'] ?? []),
-      diet: List<String>.from(tags['diet'] ?? []),
-      extras: List<String>.from(tags['extras'] ?? []),
-      photoUrls: List<String>.from(data['photoUrls'] ?? []),
-      nameTagUrl: data['nameTagUrl'],
+      id: id,
+      name: data['name'] as String? ?? '',
+      rawName: data['raw_name'] as String? ?? '',
+      fullAddress: fullAddress,
+      arrondissement: arrondissement,
+      commentaire: data['commentaire'] as String? ?? '',
+      hours: data['hours'] as String? ?? '',
+      phone: (data['contact'] as Map<String, dynamic>?)?['phone'] as String? ?? '',
+      website:
+          (data['contact'] as Map<String, dynamic>?)?['website'] as String? ?? '',
+      reservationLink: (data['contact'] as Map<String, dynamic>?)?['reservation_link']
+          as String? ?? '',
+      instagram:
+          (data['contact'] as Map<String, dynamic>?)?['instagram'] as String? ?? '',
+      googleLink:
+          (data['maps'] as Map<String, dynamic>?)?['google_link'] as String? ?? '',
+      menuLink:
+          (data['maps'] as Map<String, dynamic>?)?['menu_link'] as String? ?? '',
+      restaurantType: extract(data['type']),
+      ambiance: extract(data['ambiance']),
+      cuisine: extract(data['cuisine']),
+      priceRange: extract(data['price_range']),
+      locationContext: extract(data['location_context']),
+      services: extract(data['services']),
+      restrictionsAlimentaires: extract(data['restrictions_alimentaires']),
+      hasTerrace:
+          (data['terrasse'] as Map<String, dynamic>?)?['has_terrasse'] as bool? ?? false,
+      terraceTypes: extract(
+          (data['terrasse'] as Map<String, dynamic>?)?['type']),
+      photoUrls:
+          List<String>.from(data['photoUrls'] as List<dynamic>? ?? []),
+      nameTagUrl: data['nameTagUrl'] as String?,
     );
   }
 
+  /// Sérialise en Map compatible Firestore et cache local
   Map<String, dynamic> toJson() {
+    Map<String, dynamic> boolMap(List<String> list) =>
+        Map.fromEntries(list.map((key) => MapEntry(key, true)));
+
     return {
-      'id': id,
       'name': name,
-      'trueName': trueName,
-      'address': address,
-      'phone': phone,
-      'email': email,
-      'website': website,
-      'googleMaps': googleMaps,
-      'reservation': reservation,
-      'instagram': instagram,
-      'plus': plus,
-      'tags': {
-        'tag_initial': tagInitial,
-        'restaurant_type': restaurantType,
-        'moment': moment,
-        'location_type': locationType,
-        'ambiance': ambiance,
-        'price_range': priceRange,
-        'cuisine': cuisine,
-        'diet': diet,
-        'extras': extras,
+      'raw_name': rawName,
+      'address': {
+        'full': fullAddress,
+        'arrondissement': arrondissement,
+      },
+      'commentaire': commentaire,
+      'hours': hours,
+      'contact': {
+        'phone': phone,
+        'website': website,
+        'reservation_link': reservationLink,
+        'instagram': instagram,
+      },
+      'maps': {
+        'google_link': googleLink,
+        'menu_link': menuLink,
+      },
+      'type': boolMap(restaurantType),
+      'ambiance': boolMap(ambiance),
+      'cuisine': boolMap(cuisine),
+      'price_range': boolMap(priceRange),
+      'location_context': boolMap(locationContext),
+      'services': boolMap(services),
+      'restrictions_alimentaires': boolMap(restrictionsAlimentaires),
+      'terrasse': {
+        'has_terrasse': hasTerrace,
+        'type': boolMap(terraceTypes),
       },
       'photoUrls': photoUrls,
       'nameTagUrl': nameTagUrl,
     };
-  }
-
-  static String _parsePhone(dynamic phone) {
-    if (phone is int || phone is double) {
-      return phone.toInt().toString();
-    }
-    if (phone is String) {
-      return phone;
-    }
-    return '';
   }
 }

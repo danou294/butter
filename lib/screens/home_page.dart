@@ -3,23 +3,24 @@ import '../services/user_service.dart';
 import '../services/restaurant_service.dart';
 import '../models/restaurant.dart';
 import '../widgets/restaurant_card.dart';
-import 'search.dart';
-import 'restaurant_detail_page.dart'; // Importation de la page RestaurantDetailPage
+import 'search/search_page.dart';
+import 'restaurant_detail_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  final RestaurantService _restaurantService = RestaurantService();
+  final RestaurantService _service = RestaurantService();
   final UserService _userService = UserService();
 
   List<Restaurant> _restaurants = [];
   String? _prenom;
-  bool _loading = true;
+  bool _loadingCache = true;
+  bool _loadingNetwork = false;
 
   @override
   void initState() {
@@ -28,35 +29,77 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _initApp() async {
-    await _restaurantService.clearCache();
+    // 1) Get user prenom
     final fetchedPrenom = await _userService.fetchCurrentUserPrenom();
     setState(() => _prenom = _capitalize(fetchedPrenom ?? 'utilisateur'));
-
-    final freshRestaurants = await _restaurantService.fetchRestaurants();
-    setState(() {
-      _restaurants = freshRestaurants;
-      _loading = false;
-    });
+    
+    // 2) Load cache
+    final cached = await _service.fetchFromCache();
+    if (mounted) {
+      setState(() {
+        _restaurants = cached;
+        _loadingCache = false;
+      });
+    }
+    
+    // 3) Fetch network in background
+    setState(() => _loadingNetwork = true);
+    final fresh = await _service.fetchFromNetwork();
+    if (mounted) {
+      setState(() {
+        _restaurants = fresh;
+        _loadingNetwork = false;
+      });
+    }
   }
 
   String _capitalize(String value) {
     if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1);
+    return '${value[0].toUpperCase()}${value.substring(1)}';
+  }
+
+  Future<void> _viderCache() async {
+    setState(() {
+      _loadingCache = true;
+      _loadingNetwork = false;
+    });
+    await _service.clearCache();
+    // re-run init flow
+    await _initApp();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cache vidé, données rafraîchies !')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final headerHeight = screenHeight * 0.3;
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+    final headerHeight = height * 0.3;
+
+    final isLoading = _loadingCache || _loadingNetwork && _restaurants.isEmpty;
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Accueil', style: TextStyle(color: Colors.black)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            tooltip: 'Vider le cache',
+            onPressed: _viderCache,
+          ),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader(headerHeight, screenWidth)),
+          SliverToBoxAdapter(child: _buildHeader(headerHeight, width)),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          _loading
+          isLoading
               ? const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()))
               : SliverToBoxAdapter(child: _buildSplitColumns()),
@@ -75,97 +118,15 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.only(bottom: 20),
         color: Colors.black.withOpacity(0.45),
+        padding: const EdgeInsets.only(bottom: 20, top: 10),
         child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 10.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: width * 0.30,
-                      height: height * 0.35,
-                      child: Image.asset(
-                        'assets/icon/app_icon2.png',
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    SizedBox(
-                      width: width * 0.4,
-                      height: height * 0.12,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SearchPage()),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white),
-                          foregroundColor: Colors.white,
-                          textStyle: TextStyle(
-                            fontSize: height * 0.035,
-                            fontFamily: 'InriaSans',
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('Recherche personnalisée'),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Text(
-                  'Welcome',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: height * 0.06,
-                    fontFamily: 'InriaSerif',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Text(
-                  _prenom ?? '',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: height * 0.12,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'InriaSerif',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: SizedBox(
-                  width: width * 0.75,
-                  child: Text(
-                    'On t’a trouvé les meilleurs restos de Paris ;) ',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: height * 0.06,
-                      fontFamily: 'InriaSans',
-                    ),
-                  ),
-                ),
-              ),
+              _buildHeaderTop(width, height),
+              _buildHeaderText(height, width),
             ],
           ),
         ),
@@ -173,50 +134,86 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSplitColumns() {
-    List<Widget> leftColumn = [];
-    List<Widget> rightColumn = [];
-
-    for (int i = 0; i < _restaurants.length; i++) {
-      final card = RestaurantCard(restaurant: _restaurants[i]);
-      final paddedCard = Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: GestureDetector(
-          onTap: () {
-            // Naviguer vers la page de détails du restaurant
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RestaurantDetailPage(
-                  restaurant: _restaurants[i], // Passer le restaurant sélectionné
+  Widget _buildHeaderTop(double width, double height) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            SizedBox(
+              width: width * 0.3,
+              child: Image.asset('assets/icon/app_icon2.png', fit: BoxFit.contain),
+            ),
+            SizedBox(
+              width: width * 0.4,
+              child: OutlinedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchPage()),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white),
+                  foregroundColor: Colors.white,
+                  textStyle: TextStyle(
+                    fontSize: height * 0.035,
+                    fontFamily: 'InriaSans',
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Recherche personnalisée'),
                 ),
               ),
-            );
-          },
-          child: card,
+            ),
+          ],
         ),
       );
 
-      if (i % 2 == 0) {
-        leftColumn.add(paddedCard);
+  Widget _buildHeaderText(double height, double width) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Welcome', style: TextStyle(color: Colors.white70, fontSize: height * 0.06, fontFamily: 'InriaSerif')),
+            const SizedBox(height: 4),
+            Text(_prenom ?? '', style: TextStyle(color: Colors.white, fontSize: height * 0.12, fontWeight: FontWeight.bold, fontFamily: 'InriaSerif')),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: width * 0.75,
+              child: Text("On t'a trouvé les meilleurs restos de Paris ;)", style: TextStyle(color: Colors.white70, fontSize: height * 0.06, fontFamily: 'InriaSans')),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildSplitColumns() {
+    final left = <Widget>[];
+    final right = <Widget>[];
+    for (var i = 0; i < _restaurants.length; i++) {
+      final item = Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: RestaurantCard(
+          restaurant: _restaurants[i],
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => RestaurantDetailPage(restaurant: _restaurants[i])),
+          ),
+        ),
+      );
+      if (i.isEven) {
+        left.add(item);
       } else {
-        rightColumn.add(paddedCard);
+        right.add(item);
       }
     }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Column(children: leftColumn)),
+          Expanded(child: Column(children: left)),
           const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 40),
-              child: Column(children: rightColumn),
-            ),
-          ),
+          Expanded(child: Column(children: right)),
         ],
       ),
     );
