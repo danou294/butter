@@ -13,31 +13,20 @@ const double _spacing = 12.0;
 
 typedef OnToggle = void Function(String label, bool selected);
 
-class RestrictionsFilter extends StatefulWidget {
+class RestrictionsFilter extends StatelessWidget {
+  final Set<String> selected;
   final OnToggle onToggle;
-  const RestrictionsFilter({Key? key, required this.onToggle}) : super(key: key);
 
-  @override
-  _RestrictionsFilterState createState() => _RestrictionsFilterState();
-}
-
-class _RestrictionsFilterState extends State<RestrictionsFilter> {
-  final Map<String, bool> _selected = {
-    'Casher (certifié)': false,
-    'Casher friendly\n(tout est casher\nmais pas de teouda)': false,
-    'Viande casher': false,
-    'Végétarien': false,
-    'Vegan': false,
-  };
+  const RestrictionsFilter({
+    Key? key,
+    required this.selected,
+    required this.onToggle,
+  }) : super(key: key);
 
   Widget _buildChip(String label) {
-    final isSelected = _selected[label]!;
+    final isSelected = selected.contains(label);
     return GestureDetector(
-      onTap: () {
-        final nowSel = !isSelected;
-        setState(() => _selected[label] = nowSel);
-        widget.onToggle(label, nowSel);
-      },
+      onTap: () => onToggle(label, !isSelected),
       child: Container(
         height: _chipHeight,
         padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
@@ -62,7 +51,14 @@ class _RestrictionsFilterState extends State<RestrictionsFilter> {
 
   @override
   Widget build(BuildContext context) {
-    final labels = _selected.keys.toList();
+    const labels = [
+      'Casher (certifié)',
+      'Casher friendly\n(tout est casher\nmais pas de teouda)',
+      'Viande casher',
+      'Végétarien',
+      'Vegan',
+    ];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
       child: Column(
@@ -79,7 +75,7 @@ class _RestrictionsFilterState extends State<RestrictionsFilter> {
             ],
           ),
           const SizedBox(height: _spacing),
-          // Ligne 2 : 2 derniers items centrés
+          // Ligne 2 : 2 derniers items
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

@@ -1,63 +1,113 @@
 // lib/services/restaurant_service.dart
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 import '../models/restaurant.dart';
 
-/// Service for fetching restaurant data,
-/// separating cache and network, normalizing fields,
-/// and building logo URLs (with tokens).
+/// Conteneur pour résultats paginés depuis Firestore.
+class PaginatedRestaurants {
+  final List<Restaurant> restaurants;
+  final DocumentSnapshot? lastDocument;
+
+  PaginatedRestaurants({
+    required this.restaurants,
+    this.lastDocument,
+  });
+}
+
+/// Service pour gérer cache local et pagination Firestore des restaurants,
+/// avec génération des URLs de logo et photos.
 class RestaurantService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const _cacheKey = 'restaurants_cache';
-  static const _bucketName = 'butter-vdef.firebasestorage.app';
-  static const _logosPath = 'Logos';
-  static const _fileSuffix = '1';
+  final FirebaseFirestore _firestore;
 
-  /// If you ever need to rotate tokens, stock them here by tag.
-  static const Map<String, String> _tokenMap = {
-    'ADL': '5563cf0e-1c0f-4a76-b6c7-a303dbc200c2',
-    'ADR': 'a7dc8174-9efa-485f-b2a2-92a8c424e85d',
-    // ... ajoutez tous vos tags ici ...
-  };
+  static const String _cacheKey = 'restaurants_cache';
+  static const String _bucketName = 'butter-vdef.firebasestorage.app';
+  static const String _logosPath = 'Logos';
+  static const String _photosPath = 'Photos restaurants';
 
-  RestaurantService();
+  RestaurantService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Charge depuis le cache uniquement.
+  /// Charge tous les restaurants depuis le cache local.
   Future<List<Restaurant>> fetchFromCache() async {
     final prefs = await SharedPreferences.getInstance();
     return _loadFromCache(prefs);
   }
 
-  /// Charge depuis Firestore, met à jour le cache, ou fallback sur le cache.
-  Future<List<Restaurant>> fetchFromNetwork() async {
+  /// Récupère une page de restaurants depuis Firestore, met à jour le cache complet.
+  Future<PaginatedRestaurants> fetchPage({
+    DocumentSnapshot? lastDocument,
+    required int pageSize,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
+    final existing = _loadFromCache(prefs);
     try {
-      final snapshot = await _firestore.collection('restaurants').get();
-      final list = snapshot.docs.map(_mapDocToRestaurant).toList();
-      await _saveToCache(prefs, list);
-      return list;
-    } catch (e) {
-      // Sur erreur réseau ou permission, on retombe sur le cache
-      return _loadFromCache(prefs);
+      var query = _firestore.collection('restaurants').limit(pageSize);
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+      final snapshot = await query.get();
+      final newList = snapshot.docs.map(_mapDocToRestaurant).toList();
+      // Concatène et déduplique
+      final map = <String, Restaurant>{};
+      for (var r in [...existing, ...newList]) {
+        map[r.id] = r;
+      }
+      final combined = map.values.toList();
+      await _saveToCache(prefs, combined);
+      return PaginatedRestaurants(
+        restaurants: newList,
+        lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      );
+    } catch (_) {
+      // Fallback cache complet
+      return PaginatedRestaurants(restaurants: existing, lastDocument: null);
     }
   }
 
-  /// Vide simplement les données mises en cache.
+  /// Vide le cache local.
   Future<void> clearCache() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
   }
 
-  /// Transforme un DocumentSnapshot en Restaurant, en normalisant TOUTES vos valeurs Firestore.
+  /// Génère les URLs des photos (<TAG>2.png à <TAG>6.png).
+  List<String> _generateImageUrls(String tag, {int min = 2, int max = 6}) =>
+      List.generate(max - min + 1, (i) {
+        final num = i + min;
+        return _mediaUrl(_photosPath, '${tag}$num.png');
+      });
+
+  // Exemple de mapping pour les tokens d'images (à compléter selon tes besoins)
+  final Map<String, String> _imageTokens = {
+    'AKE2.png': '97db9b1d-ba1e-4ab4-a411-a3a4242cc7b7',
+    // Ajoute ici les autres images et tokens si besoin
+  };
+
+  /// Génère une URL de média depuis Firebase Storage, avec gestion optionnelle du token.
+  String _mediaUrl(String folder, String filename) {
+    final path = Uri.encodeComponent('$folder/$filename');
+    final token = _imageTokens[filename];
+    return token != null
+        ? 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media'
+        : 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media';
+  }
+
+  /// Génère l'URL du logo (<TAG>1.png).
+  String _generateLogoUrl(String tag) => _mediaUrl(_logosPath, '${tag}1.png');
+
+  /// Transforme un DocumentSnapshot en Restaurant normalisé et ajoute URLs.
   Restaurant _mapDocToRestaurant(DocumentSnapshot doc) {
     final raw = Map<String, dynamic>.from(doc.data() as Map);
+    final tag = (raw['tag'] ?? '').toString().toUpperCase();
+    final logoUrl = tag.isNotEmpty ? _generateLogoUrl(tag) : null;
+    final imageUrls = tag.isNotEmpty ? _generateImageUrls(tag) : <String>[];
 
-    // 1) Normalisation des champs texte / bool / listes
-    final normalized = <String, dynamic>{
+    final data = <String, dynamic>{
       'name': raw['Vrai Nom'] ?? raw['rawName'] ?? '',
-      'raw_name': raw['tag'] ?? '',
+      'raw_name': tag,
       'address': {
         'full': raw['Adresse'] ?? '',
         'arrondissement': raw['Arrondissement'] ?? 0,
@@ -74,29 +124,15 @@ class RestaurantService {
         'google_link': raw['Lien Google'] ?? '',
         'menu_link': raw['Lien Menu'] ?? '',
       },
-      // types et cuisine
-      'type': raw['types'] is String
-          ? [raw['types']]
-          : (raw['types'] as List?) ?? [],
+      'type': raw['types'] is String ? [raw['types']] : (raw['types'] as List?) ?? <String>[],
       'ambiance': {
         'classique': raw['ambiance_classique'] ?? false,
         'date': raw['ambiance_date'] ?? false,
         'festif': raw['ambiance_festif'] ?? false,
         'intimiste': raw['ambiance_intimiste'] ?? false,
       },
-      'cuisine': raw['cuisines'] is String
-          ? [raw['cuisines']]
-          : (raw['cuisines'] as List?) ?? [],
-      'price_range': raw['price_range'] is String
-          ? [raw['price_range']]
-          : (raw['price_range'] as List?) ?? [],
-      'location_context': {
-        'rue': raw['dans_la_rue'] ?? false,
-        'hotel': raw['dans_un_hotel'] ?? false,
-        'monument': raw['dans_un_monument'] ?? false,
-        'musee': raw['dans_un_musee'] ?? false,
-        'galerie': raw['dans_une_galerie'] ?? false,
-      },
+      'cuisine': raw['cuisines'] is String ? [raw['cuisines']] : (raw['cuisines'] as List?) ?? <String>[],
+      'price_range': raw['price_range'] is String ? [raw['price_range']] : (raw['price_range'] as List?) ?? <String>[],
       'services': {
         'dejeuner': raw['dejeuner'] ?? false,
         'diner': raw['diner'] ?? false,
@@ -109,39 +145,24 @@ class RestaurantService {
         'gouter': raw['gouter'] ?? false,
         'petit_dejeuner': raw['petit_dejeuner'] ?? false,
       },
-      'restrictions_alimentaires':
-          raw['restrictions_alimentaires'] ?? <String, bool>{},
-      'terrasse': {
-        'has_terrasse': raw['has_terrace'] ?? raw['hasTerrace'] ?? false,
-        'type': raw['terrace_locs'] is String
-            ? [raw['terrace_locs']]
-            : (raw['terrace_locs'] as List?) ?? [],
+      'location_context': {
+        'rue': raw['dans_la_rue'] ?? false,
+        'hotel': raw['dans_un_hotel'] ?? false,
+        'monument': raw['dans_un_monument'] ?? false,
+        'musee': raw['dans_un_musee'] ?? false,
+        'galerie': raw['dans_une_galerie'] ?? false,
       },
-      'photoUrls': raw['photoUrls'] is List
-          ? List<String>.from(raw['photoUrls'])
-          : <String>[],
+      'restrictions_alimentaires': raw['restrictions_alimentaires'] ?? <String, bool>{},
+      'photoUrls': raw['photoUrls'] is List ? List<String>.from(raw['photoUrls']) : <String>[],
+      'logoUrl': logoUrl,
+      'imageUrls': imageUrls,
     };
 
-    // 2) Construction de l'URL du logo avec token
-    final tag = (normalized['raw_name'] as String).trim().toUpperCase();
-    if (tag.isNotEmpty && _tokenMap.containsKey(tag)) {
-      final filename = '$tag$_fileSuffix.png';                  // ex: "ADL1.png"
-      final path = Uri.encodeComponent('$_logosPath/$filename'); // "Logos%2FADL1.png"
-      final token = _tokenMap[tag]!;
-      normalized['nameTagUrl'] =
-          'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path'
-          '?alt=media&token=$token';
-    } else {
-      normalized['nameTagUrl'] = null;
-    }
-
-    // 3) Création finale du modèle
-    return Restaurant.fromMap(doc.id, normalized);
+    return Restaurant.fromMap(doc.id, data);
   }
 
-  /// Sauvegarde la liste en cache local
-  Future<void> _saveToCache(
-      SharedPreferences prefs, List<Restaurant> list) async {
+  /// Sauvegarde la liste en cache local.
+  Future<void> _saveToCache(SharedPreferences prefs, List<Restaurant> list) async {
     final jsonList = list.map((r) {
       final map = r.toJson()..['id'] = r.id;
       return jsonEncode(map);
@@ -149,10 +170,10 @@ class RestaurantService {
     await prefs.setStringList(_cacheKey, jsonList);
   }
 
-  /// Lecture depuis cache local
+  /// Charge depuis cache local.
   List<Restaurant> _loadFromCache(SharedPreferences prefs) {
     final data = prefs.getStringList(_cacheKey);
-    if (data == null || data.isEmpty) return [];
+    if (data == null || data.isEmpty) return <Restaurant>[];
     return data.map((s) {
       final map = jsonDecode(s) as Map<String, dynamic>;
       final id = map.remove('id') as String;

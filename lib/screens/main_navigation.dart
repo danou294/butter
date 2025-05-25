@@ -2,88 +2,66 @@
 
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import 'favorites_page.dart';
 import 'search/search_page.dart';
+import 'favorites_page.dart';
 import 'profile_page.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
-
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  MainNavigationState createState() => MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
-
   final List<Widget> _pages = const [
     HomePage(),
-    SearchPage(),
+    SearchPage(),      // notre SearchPage refondue
     FavoritesPage(),
     ProfilePage(),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-  }
-
+  void onTab(int i) => setState(() => _selectedIndex = i);
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext c) {
     return Scaffold(
-      // Affiche la page active
       body: _pages[_selectedIndex],
-
-      // Barre de navigation personnalisée
       bottomNavigationBar: Container(
-        height: 90,
+        height: 70,
         decoration: const BoxDecoration(
-          color: Colors.white,
           border: Border(top: BorderSide(color: Colors.black12)),
+          color: Colors.white,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildNavItem(0, 'Explorer', 'Explorer'),
-            _buildNavItem(1, 'Rechercher', 'rechercher'),
-            _buildNavItem(2, 'Favoris', 'favoris'),
-            _buildNavItem(3, 'Compte', 'compte'),
+            _navItem(0, 'Explorer','Explorer'),
+            _navItem(1, 'Rechercher','rechercher'),
+            _navItem(2, 'Favoris','favoris'),
+            _navItem(3, 'Compte','compte'),
           ],
-        ),
+        )
       ),
     );
   }
-
-  Widget _buildNavItem(int index, String label, String assetBaseName) {
-    final bool isSelected = _selectedIndex == index;
-    final String assetName = isSelected
-        ? 'assets/navigation-tools/${assetBaseName}_black.png'
-        : 'assets/navigation-tools/$assetBaseName.png';
-
+  Widget _navItem(int idx, String label, String asset) {
+    final sel = _selectedIndex==idx;
     return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      child: SizedBox(
-        width: 95,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              assetName,
-              width: 32,
-              height: 32,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'InriaSans',
-                fontSize: 14,
-                color: Colors.black,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
+      onTap: ()=>onTab(idx),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children:[
+          Image.asset(
+            sel
+              ? 'assets/navigation-tools/${asset}_black.png'
+              : 'assets/navigation-tools/$asset.png',
+            width:28, height:28,
+          ),
+          Text(label, style: TextStyle(
+            fontSize:12,
+            fontWeight:sel?FontWeight.bold:FontWeight.normal
+          )),
+        ]
+      )
     );
   }
 }

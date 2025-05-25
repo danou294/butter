@@ -1,25 +1,32 @@
 // lib/screens/favorites_page.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../models/restaurant.dart';
 import '../services/favorite_service.dart';
 import '../services/restaurant_service.dart';
-import '../models/restaurant.dart';
 import '../widgets/restaurant_card.dart';
 import 'main_navigation.dart';
 import 'restaurant_detail_page.dart';
 
+/// Page affichant les restaurants favoris de l'utilisateur,
+/// en se basant sur le cache local et une mise à jour réseau via fetchPage.
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({Key? key}) : super(key: key);
 
   @override
-  _FavoritesPageState createState() => _FavoritesPageState();
+  State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
+  static const int _fetchSize = 10000; // assez grand pour récupérer tous les favoris
+
   final FavoriteService _favoriteService = FavoriteService();
   final RestaurantService _restaurantService = RestaurantService();
 
   List<Restaurant> _favorites = [];
   bool _loading = true;
+  DocumentSnapshot? _lastDoc;
 
   @override
   void initState() {
@@ -28,9 +35,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   Future<void> _loadFavorites() async {
+    // Récupère les IDs favoris
     final ids = await _favoriteService.getFavoriteRestaurantIds();
 
-    // 1) Load from cache
+    // 1) Chargement dans le cache local
     final cached = await _restaurantService.fetchFromCache();
     final fromCache = cached.where((r) => ids.contains(r.id)).toList();
     if (mounted) {
@@ -40,13 +48,20 @@ class _FavoritesPageState extends State<FavoritesPage> {
       });
     }
 
-    // 2) Load from network
-    final fresh = await _restaurantService.fetchFromNetwork();
-    final fromNetwork = fresh.where((r) => ids.contains(r.id)).toList();
-    if (mounted) {
-      setState(() {
-        _favorites = fromNetwork;
-      });
+    // 2) Chargement réseau paginé (une seule page)
+    try {
+      final page = await _restaurantService.fetchPage(
+        lastDocument: null,
+        pageSize: _fetchSize,
+      );
+      final networkList = page.restaurants.where((r) => ids.contains(r.id)).toList();
+      if (mounted) {
+        setState(() {
+          _favorites = networkList;
+        });
+      }
+    } catch (_) {
+      // On ignore l'erreur et conserve le cache
     }
   }
 
@@ -60,15 +75,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: _buildHeader(headerHeight, screenWidth),
-          ),
+          SliverToBoxAdapter(child: _buildHeader(headerHeight, screenWidth)),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
           _loading
               ? const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()),
                 )
-              : SliverToBoxAdapter(child: _buildSplitColumns()),
+              : SliverToBoxAdapter(child: _buildContent()),
         ],
       ),
     );
@@ -84,8 +97,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.only(bottom: 20),
         color: Colors.black54,
+        padding: const EdgeInsets.only(bottom: 20),
         child: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -109,7 +122,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Text(
-                  '${_favorites.length} ' +
+                  '\${_favorites.length} ' +
                       (_favorites.length > 1 ? 'adresses enregistrées' : 'adresse enregistrée'),
                   style: TextStyle(
                     color: Colors.white70,
@@ -161,11 +174,10 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildSplitColumns() {
+  Widget _buildContent() {
     final left = <Widget>[];
     final right = <Widget>[];
-
-    for (int i = 0; i < _favorites.length; i++) {
+    for (var i = 0; i < _favorites.length; i++) {
       final item = Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: GestureDetector(
@@ -184,7 +196,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
         right.add(item);
       }
     }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(

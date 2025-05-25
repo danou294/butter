@@ -1,212 +1,160 @@
 // lib/screens/search/filters/localization_filter.dart
 
 import 'package:flutter/material.dart';
+import '../../../models/restaurant.dart';
 
-// TODO : adapte ces constantes à ta charte graphique
-const _selectedBg = Color(0xFFBFB9A4);
-const _unselectedBg = Color(0xFFF5F5F0);
-const _labelColor = Colors.black;
-const _fontFamilySans = 'InriaSans';
+// TODO: Adapte ces constantes à ta charte graphique
+const Color _selectedBg = Color(0xFFBFB9A4);
+const Color _unselectedBg = Color(0xFFF5F5F0);
+const Color _labelColor = Colors.black;
+const String _fontFamily = 'InriaSans';
 
-// Ajustements de taille
-const double _dirSize = 78.0;         // largeur & hauteur du bouton direction
-const double _dirIconScale = 0.5;     // échelle de l’icône
-const double _dirLabelSize = 12.0;    // taille du texte sous l’icône
-const double _dirSpacing = 4.0;       // espacement entre icône et label
+typedef OnToggle = void Function(String label, bool isSelected);
 
-const double _arrSize = 38.0;         // taille des carrés arrondissements
-const double _arrFontSize = 12.0;     // taille du texte dans arrondissements
+/// Représente un item de filtre générique avec dimensions et icône optionnelle
+class _FilterItem {
+  final String label;
+  final double width;
+  final double height;
+  final double fontSize;
+  final String? iconPath;
 
-const double _communeWidth = 78.0;    // largeur des boutons communes
-const double _communeHeight = 36.0;   // hauteur des boutons communes
-const double _communeFontSize = 12.0; // taille du texte dans communes
-
-typedef OnToggle = void Function(String label, bool selected);
-
-class LocalizationFilter extends StatefulWidget {
-  final OnToggle onToggle;
-  const LocalizationFilter({Key? key, required this.onToggle}) : super(key: key);
-
-  @override
-  _LocalizationFilterState createState() => _LocalizationFilterState();
+  const _FilterItem({
+    required this.label,
+    required this.width,
+    required this.height,
+    required this.fontSize,
+    this.iconPath,
+  });
 }
 
-class _LocalizationFilterState extends State<LocalizationFilter> {
-  // Directions (multi-sélection)
-  final List<_DirectionItem> _directions = const [
-    _DirectionItem('Ouest', 'assets/direction/ouest.png'),
-    _DirectionItem('Centre', 'assets/direction/centre.png'),
-    _DirectionItem('Est',   'assets/direction/est.png'),
-  ];
-  final Set<int> _selectedDirections = {};
+class LocalizationFilter extends StatelessWidget {
+  final Set<String> selected;
+  final OnToggle onToggle;
 
-  // Arrondissements (multi-sélection)
-  final List<String> _arr = List.generate(20, (i) => '${i + 1}e');
-  final Set<String> _selectedArrondissements = {};
+  const LocalizationFilter({
+    Key? key,
+    required this.selected,
+    required this.onToggle,
+  }) : super(key: key);
 
-  // Communes (multi-sélection)
-  final List<String> _communes = [
-    'Boulogne', 'Levallois', 'Neuilly',
-    'Charenton', 'Saint-Mandé', 'Saint-Ouen',
-    'Saint-Cloud',
-  ];
-  final Set<String> _selectedCommunes = {};
+  Widget _buildTile(_FilterItem item) {
+    final isSelected = selected.contains(item.label);
+    return GestureDetector(
+      onTap: () => onToggle(item.label, !isSelected),
+      child: Container(
+        width: item.width,
+        height: item.height,
+        margin: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isSelected ? _selectedBg : _unselectedBg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: item.iconPath != null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    item.iconPath!,
+                    width: item.width * 0.5,
+                    height: item.height * 0.5,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontFamily: _fontFamily,
+                      fontSize: item.fontSize,
+                      color: _labelColor,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                item.label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: _fontFamily,
+                  fontSize: item.fontSize,
+                  color: _labelColor,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // 1) Directions définies dans le modèle Restaurant
+    final directions = Restaurant.directionGroups.keys.map((dir) {
+      return _FilterItem(
+        label: dir,
+        width: screenWidth / 4,
+        height: screenWidth / 4,
+        fontSize: 12,
+        iconPath: 'assets/direction/${dir.toLowerCase()}.png',
+      );
+    }).toList();
+
+    // 2) Arrondissements à partir du modèle
+    final arrondissements = Restaurant.arrondissementMap.keys.map((a) {
+      return _FilterItem(
+        label: a,
+        width: 38,
+        height: 38,
+        fontSize: 12,
+      );
+    }).toList();
+
+    // 3) Communes à partir du modèle
+    final communes = Restaurant.communeMap.keys.map((c) {
+      return _FilterItem(
+        label: c,
+        width: 78,
+        height: 36,
+        fontSize: 12,
+      );
+    }).toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1) Directions : icône + légende, centrées
+          // Directions
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: _directions.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final dir = entry.value;
-                final isSel = _selectedDirections.contains(idx);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: GestureDetector(
-                    onTap: () {
-                      final nowSel = !isSel;
-                      setState(() {
-                        if (isSel) _selectedDirections.remove(idx);
-                        else _selectedDirections.add(idx);
-                      });
-                      widget.onToggle(dir.label, nowSel);
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: _dirSize,
-                          height: _dirSize,
-                          decoration: BoxDecoration(
-                            color: isSel ? _selectedBg : _unselectedBg,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Image.asset(
-                              dir.assetPath,
-                              width: _dirSize * _dirIconScale,
-                              height: _dirSize * _dirIconScale,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: _dirSpacing),
-                        Text(
-                          dir.label,
-                          style: TextStyle(
-                            fontFamily: _fontFamilySans,
-                            fontSize: _dirLabelSize,
-                            color: _labelColor,
-                            fontWeight:
-                                isSel ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+              children: directions.map(_buildTile).toList(),
             ),
           ),
-
           const SizedBox(height: 24),
 
-          // 2) Arrondissements
+          // Arrondissements
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 10,
             runSpacing: 10,
-            children: _arr.map((e) {
-              final isSel = _selectedArrondissements.contains(e);
-              return GestureDetector(
-                onTap: () {
-                  final nowSel = !isSel;
-                  setState(() {
-                    if (isSel) _selectedArrondissements.remove(e);
-                    else _selectedArrondissements.add(e);
-                  });
-                  widget.onToggle(e, nowSel);
-                },
-                child: Container(
-                  width: _arrSize,
-                  height: _arrSize,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isSel ? _selectedBg : _unselectedBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    e,
-                    style: TextStyle(
-                      fontFamily: _fontFamilySans,
-                      fontSize: _arrFontSize,
-                      color: _labelColor,
-                      fontWeight:
-                          isSel ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+            children: arrondissements.map(_buildTile).toList(),
           ),
-
           const SizedBox(height: 24),
 
-          // 3) Communes
+          // Communes
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 10,
             runSpacing: 10,
-            children: _communes.map((e) {
-              final isSel = _selectedCommunes.contains(e);
-              return GestureDetector(
-                onTap: () {
-                  final nowSel = !isSel;
-                  setState(() {
-                    if (isSel) _selectedCommunes.remove(e);
-                    else _selectedCommunes.add(e);
-                  });
-                  widget.onToggle(e, nowSel);
-                },
-                child: Container(
-                  width: _communeWidth,
-                  height: _communeHeight,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isSel ? _selectedBg : _unselectedBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    e,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: _fontFamilySans,
-                      fontSize: _communeFontSize,
-                      color: _labelColor,
-                      fontWeight:
-                          isSel ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+            children: communes.map(_buildTile).toList(),
           ),
         ],
       ),
     );
   }
-}
-
-class _DirectionItem {
-  final String label;
-  final String assetPath;
-  const _DirectionItem(this.label, this.assetPath);
 }

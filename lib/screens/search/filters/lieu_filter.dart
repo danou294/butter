@@ -1,58 +1,72 @@
-// lib/screens/search/filters/lieu_filter.dart
-
 import 'package:flutter/material.dart';
 
-// TODO : adapte ces constantes à ta charte graphique
-const _selectedBg = Color(0xFFBFB9A4);
-const _unselectedBg = Color(0xFFF5F5F0);
-const _labelColor = Colors.black;
-const _fontFamilySans = 'InriaSans';
-const double _chipHeight = 40.0;
-const double _horizontalPadding = 16.0;
-const double _spacing = 12.0;
+/// Composant de filtre "Lieu" pour les restaurants.
+/// Affiche une série de chips représentant le contexte de lieu.
+/// Sélection multiple possible, chaque chip correspond à une clé Firestore.
+///
+/// - [selected] : ensemble des clés de lieu actuellement sélectionnées.
+/// - [onToggle] : callback appelé lors de la sélection ou désélection d'une clé.
+class LieuFilter extends StatelessWidget {
+  /// Ensemble des clés Firestore sélectionnées (ex. 'dans_la_rue', 'dans_un_musee').
+  final Set<String> selected;
 
-typedef OnToggle = void Function(String label, bool selected);
+  /// Fonction appelée lors du basculement d'un filtre.
+  /// - [key]     : clé Firestore du lieu.
+  /// - [selected]: nouvel état (true = sélectionné).
+  final void Function(String key, bool selected) onToggle;
 
-class LieuFilter extends StatefulWidget {
-  final OnToggle onToggle;
-  const LieuFilter({Key? key, required this.onToggle}) : super(key: key);
+  const LieuFilter({
+    Key? key,
+    required this.selected,
+    required this.onToggle,
+  }) : super(key: key);
 
-  @override
-  _LieuFilterState createState() => _LieuFilterState();
-}
-
-class _LieuFilterState extends State<LieuFilter> {
-  final Map<String, bool> _selected = {
-    'Dans la rue': false,
-    'Dans une galerie': false,
-    'Dans un musée': false,
-    'Dans un monument': false,
-    'Dans un hôtel': false,
-    'Other': false,
+  // Mapping affichage → clé Firestore
+  static const Map<String, String> _labelToKey = {
+    'Dans la rue':        'dans_la_rue',
+    'Dans une galerie':   'dans_une_galerie',
+    'Dans un musée':      'dans_un_musee',
+    'Dans un monument':   'dans_un_monument',
+    'Dans un hôtel':      'dans_un_hotel',
+    'Other':              'other_lieu',
   };
 
+  // Styles des chips, alignés sur MomentFilter
+  static const Color _selectedBg   = Color(0xFFBFB9A4);
+  static const Color _unselectedBg = Color(0xFFF5F5F0);
+  static const Color _labelColor   = Colors.black;
+  static const String _fontFamily  = 'InriaSans';
+  static const double _chipHeight  = 32.0;
+  static const double _hPadding    = 12.0;
+  static const double _vPadding    = 8.0;
+  static const double _spacing     = 8.0;
+  static const double _fontSize    = 14.0;
+
   Widget _buildChip(String label) {
-    final isSelected = _selected[label]!;
-    return GestureDetector(
-      onTap: () {
-        final nowSel = !isSelected;
-        setState(() => _selected[label] = nowSel);
-        widget.onToggle(label, nowSel);
-      },
+    final key = _labelToKey[label]!;
+    final isSelected = selected.contains(key);
+
+    return InkWell(
+      onTap: () => onToggle(key, !isSelected),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         height: _chipHeight,
-        padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _hPadding,
+          vertical: _vPadding,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? _selectedBg : _unselectedBg,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade300,
+          ),
         ),
         child: Text(
           label,
-          textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: _fontFamilySans,
-            fontSize: 14,
+            fontFamily: _fontFamily,
+            fontSize: _fontSize,
             color: _labelColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -63,35 +77,14 @@ class _LieuFilterState extends State<LieuFilter> {
 
   @override
   Widget build(BuildContext context) {
-    final labels = _selected.keys.toList();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Column(
-        children: [
-          // Ligne 1 : 3 items
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildChip(labels[0]),
-              const SizedBox(width: _spacing),
-              _buildChip(labels[1]),
-              const SizedBox(width: _spacing),
-              _buildChip(labels[2]),
-            ],
-          ),
-          const SizedBox(height: _spacing),
-          // Ligne 2 : 3 items
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildChip(labels[3]),
-              const SizedBox(width: _spacing),
-              _buildChip(labels[4]),
-              const SizedBox(width: _spacing),
-              _buildChip(labels[5]),
-            ],
-          ),
-        ],
+    final labels = _labelToKey.keys.toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      child: Wrap(
+        spacing: _spacing,
+        runSpacing: _spacing,
+        alignment: WrapAlignment.center,
+        children: labels.map(_buildChip).toList(),
       ),
     );
   }

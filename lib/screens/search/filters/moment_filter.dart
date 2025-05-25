@@ -1,61 +1,78 @@
-// lib/screens/search/filters/moment_filter.dart
-
 import 'package:flutter/material.dart';
 
-// TODO : adapte ces constantes à ta charte graphique
-const _selectedBg = Color(0xFFBFB9A4);
-const _unselectedBg = Color(0xFFF5F5F0);
-const _labelColor = Colors.black;
-const _fontFamilySans = 'InriaSans';
-const double _chipHeight = 36.0;
-const double _horizontalPadding = 12.0;
-const double _spacing = 12.0;
+/// Composant de filtre "Moment" pour les restaurants.
+/// Affiche une série de chips représentant les moments de la journée.
+/// Sélection multiple possible, chaque chip applique un ou plusieurs filtres Firestore.
+///
+/// - [selected] : ensemble des clés de moments actuellement sélectionnées.
+/// - [onToggle] : callback appelé lors de la sélection ou désélection d'une clé.
+class MomentFilter extends StatelessWidget {
+  /// Ensemble des clés Firestore sélectionnées (ex. 'petit_dejeuner', 'dejeuner').
+  final Set<String> selected;
 
-typedef OnToggle = void Function(String label, bool selected);
+  /// Fonction appelée lors du basculement d'un filtre.
+  /// - [key]     : clé Firestore du moment.
+  /// - [selected]: nouvel état (true = sélectionné).
+  final void Function(String key, bool selected) onToggle;
 
-class MomentFilter extends StatefulWidget {
-  final OnToggle onToggle;
-  const MomentFilter({Key? key, required this.onToggle}) : super(key: key);
+  const MomentFilter({
+    Key? key,
+    required this.selected,
+    required this.onToggle,
+  }) : super(key: key);
 
-  @override
-  _MomentFilterState createState() => _MomentFilterState();
-}
+  // Couleurs et style des chips
+  static const Color _selectedBg     = Color(0xFFBFB9A4);
+  static const Color _unselectedBg   = Color(0xFFF5F5F0);
+  static const Color _labelColor     = Colors.black;
+  static const String _fontFamily    = 'InriaSans';
+  static const double _chipHeight    = 32.0;
+  static const double _hPadding      = 12.0;
+  static const double _vPadding      = 8.0;
+  static const double _spacing       = 8.0;
+  static const double _fontSize      = 14.0;
 
-class _MomentFilterState extends State<MomentFilter> {
-  final Map<String, bool> _selected = {
-    'Petit-déjeuner': false,
-    'Brunch': false,
-    'Déjeuner': false,
-    'Goûter': false,
-    'Drinks': false,
-    'Dîner': false,
-    'Apéro': false,
-    'Brunch le samedi': false,
-    'Brunch le dimanche': false,
+  /// Mapping affichage → clés Firestore.
+  /// "Brunch" coche toutes les clés brunch_*. Pas de chip séparé pour samedi/dimanche.
+  static const Map<String, List<String>> _labelToKeys = {
+    'Petit-déjeuner': ['petit_dejeuner'],
+    'Brunch':         ['brunch_general', 'brunch_samedi', 'brunch_dimanche'],
+    'Déjeuner':       ['dejeuner'],
+    'Goûter':         ['gouter'],
+    'Drinks':         ['drinks'],
+    'Dîner':          ['diner'],
+    'Apéro':          ['apero'],
   };
 
   Widget _buildChip(String label) {
-    final isSelected = _selected[label]!;
-    return GestureDetector(
+    final keys = _labelToKeys[label]!;
+    final isSelected = keys.every(selected.contains);
+
+    return InkWell(
       onTap: () {
-        final nowSel = !isSelected;
-        setState(() => _selected[label] = nowSel);
-        widget.onToggle(label, nowSel);
+        for (var key in keys) {
+          onToggle(key, !selected.contains(key));
+        }
       },
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         height: _chipHeight,
-        padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _hPadding,
+          vertical: _vPadding,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? _selectedBg : _unselectedBg,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade300,
+          ),
         ),
         child: Text(
           label,
-          textAlign: TextAlign.center,
           style: TextStyle(
-            fontFamily: _fontFamilySans,
-            fontSize: 14,
+            fontFamily: _fontFamily,
+            fontSize: _fontSize,
             color: _labelColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -66,27 +83,24 @@ class _MomentFilterState extends State<MomentFilter> {
 
   @override
   Widget build(BuildContext context) {
-    final keys = _selected.keys.toList();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Column(
-        children: [
-          // Trois lignes de 3 items chacune
-          for (var row = 0; row < 3; row++) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (col) {
-                final idx = row * 3 + col;
-                final label = keys[idx];
-                return Padding(
-                  padding: EdgeInsets.only(left: col == 0 ? 0 : _spacing),
-                  child: _buildChip(label),
-                );
-              }),
-            ),
-            if (row < 2) const SizedBox(height: _spacing),
-          ],
-        ],
+    // Liste des libellés affichés
+    const labels = [
+      'Petit-déjeuner',
+      'Brunch',
+      'Déjeuner',
+      'Goûter',
+      'Drinks',
+      'Dîner',
+      'Apéro',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      child: Wrap(
+        spacing: _spacing,
+        runSpacing: _spacing,
+        alignment: WrapAlignment.center,
+        children: labels.map(_buildChip).toList(),
       ),
     );
   }

@@ -1,59 +1,84 @@
-// lib/screens/search/filters/cuisine_filter.dart
-
 import 'package:flutter/material.dart';
 
-// TODO : adapte ces constantes à ta charte graphique
-const _selectedBg = Color(0xFFBFB9A4);
-const _unselectedBg = Color(0xFFF5F5F0);
-const _labelColor = Colors.black;
-const _fontFamilySans = 'InriaSans';
-const double _chipHeight = 32.0;
-const double _horizontalPadding = 12.0;
-const double _verticalSpacing = 12.0;
+/// Composant de filtre "Cuisine" pour les restaurants.
+/// Affiche une série de chips représentant les types de cuisine.
+/// Sélection multiple possible.
+///
+/// - [selected] : ensemble des clés de cuisine actuellement sélectionnées.
+/// - [onToggle] : callback appelé lors de la sélection ou désélection d'une clé.
+class CuisineFilter extends StatelessWidget {
+  /// Ensemble des clés Firestore sélectionnées (ex. 'Italien', 'Français').
+  final Set<String> selected;
 
-typedef OnToggle = void Function(String label, bool selected);
+  /// Fonction appelée lors du basculement d'un filtre.
+  /// - [key]     : clé Firestore de la cuisine.
+  /// - [selected]: nouvel état (true = sélectionné).
+  final void Function(String key, bool selected) onToggle;
 
-class CuisineFilter extends StatefulWidget {
-  final OnToggle onToggle;
-  const CuisineFilter({Key? key, required this.onToggle}) : super(key: key);
+  const CuisineFilter({
+    Key? key,
+    required this.selected,
+    required this.onToggle,
+  }) : super(key: key);
 
-  @override
-  _CuisineFilterState createState() => _CuisineFilterState();
-}
-
-class _CuisineFilterState extends State<CuisineFilter> {
-  final Map<String, bool> _selected = {
-    'Italien': false,
-    'Méditerranéen': false,
-    'Asiatique': false,
-    'Sud Américain': false,
-    'Français': false,
-    'Indien': false,
-    'Américain': false,
-    'Africain': false,
+  // Mapping affichage → clé Firestore
+  static const Map<String, String> _labelToKey = {
+    'Africain': 'Africain',
+    'Américain': 'Américain',
+    'Chinois': 'Chinois',
+    'Coréen': 'Coréen',
+    'Français': 'Français',
+    'Grec': 'Grec',
+    'Indien': 'Indien',
+    'Israélien': 'Israélien',
+    'Italien': 'Italien',
+    'Japonais': 'Japonais',
+    'Libanais': 'Libanais',
+    'Mexicain': 'Mexicain',
+    'Oriental': 'Oriental',
+    'Péruvien': 'Péruvien',
+    'Sud-Américain': 'Sud-Américain',
+    'Thaï': 'Thaï',
+    'Vietnamien': 'Vietnamien',
+    'Other': 'Other',
   };
 
+  // Styles des chips, alignés sur le MomentFilter
+  static const Color _selectedBg   = Color(0xFFBFB9A4);
+  static const Color _unselectedBg = Color(0xFFF5F5F0);
+  static const Color _labelColor   = Colors.black;
+  static const String _fontFamily  = 'InriaSans';
+  static const double _chipHeight  = 32.0;
+  static const double _hPadding    = 12.0;
+  static const double _vPadding    = 8.0;
+  static const double _spacing     = 8.0;
+  static const double _fontSize    = 14.0;
+
   Widget _buildChip(String label) {
-    final isSelected = _selected[label]!;
-    return GestureDetector(
-      onTap: () {
-        final nowSel = !isSelected;
-        setState(() => _selected[label] = nowSel);
-        widget.onToggle(label, nowSel);
-      },
+    final key = _labelToKey[label]!;
+    final isSelected = selected.contains(key);
+
+    return InkWell(
+      onTap: () => onToggle(key, !isSelected),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         height: _chipHeight,
-        padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: _hPadding,
+          vertical: _vPadding,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? _selectedBg : _unselectedBg,
           borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? Colors.black : Colors.grey.shade300,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontFamily: _fontFamilySans,
-            fontSize: 13,
+            fontFamily: _fontFamily,
+            fontSize: _fontSize,
             color: _labelColor,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -64,47 +89,14 @@ class _CuisineFilterState extends State<CuisineFilter> {
 
   @override
   Widget build(BuildContext context) {
-    final keys = _selected.keys.toList();
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: _verticalSpacing),
-      child: Column(
-        children: [
-          // Première ligne : 3 items
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildChip(keys[0]),
-              const SizedBox(width: _verticalSpacing),
-              _buildChip(keys[1]),
-              const SizedBox(width: _verticalSpacing),
-              _buildChip(keys[2]),
-            ],
-          ),
-          const SizedBox(height: _verticalSpacing),
-
-          // Deuxième ligne : 3 items
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildChip(keys[3]),
-              const SizedBox(width: _verticalSpacing),
-              _buildChip(keys[4]),
-              const SizedBox(width: _verticalSpacing),
-              _buildChip(keys[5]),
-            ],
-          ),
-          const SizedBox(height: _verticalSpacing),
-
-          // Troisième ligne : 2 items centrés
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildChip(keys[6]),
-              const SizedBox(width: _verticalSpacing),
-              _buildChip(keys[7]),
-            ],
-          ),
-        ],
+    final labels = _labelToKey.keys.toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      child: Wrap(
+        spacing: _spacing,
+        runSpacing: _spacing,
+        alignment: WrapAlignment.center,
+        children: labels.map(_buildChip).toList(),
       ),
     );
   }

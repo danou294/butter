@@ -1,10 +1,28 @@
 import 'package:flutter/material.dart';
 import '../models/restaurant.dart';
 import '../services/favorite_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class RestaurantCard extends StatefulWidget {
   final Restaurant restaurant;
   final VoidCallback? onTap;
+
+  // Affichage du logo juste sous les attributs
+  Widget get logoWidget {
+    final url = restaurant.logoUrl;
+    if (url != null && url.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Image.network(
+          url,
+          height: 40,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+        ),
+      );
+    }
+    return const SizedBox(height: 40);
+  }
 
   const RestaurantCard({
     Key? key,
@@ -24,6 +42,12 @@ class _RestaurantCardState extends State<RestaurantCard> {
   void initState() {
     super.initState();
     _loadFavoriteStatus();
+    // Impression des images extraites (imageUrls)
+    final images = widget.restaurant.imageUrls ?? [];
+    for (var i = 0; i < images.length; i++) {
+      // ignore: avoid_print
+      print('Image ${i + 2} pour ${widget.restaurant.name} : ${images[i]}');
+    }
   }
 
   Future<void> _loadFavoriteStatus() async {
@@ -111,14 +135,20 @@ class _RestaurantCardState extends State<RestaurantCard> {
   }
 
   Widget _buildPhotoRow() {
-    final photos = widget.restaurant.photoUrls;
-    final images = photos.length > 1 ? photos.sublist(1) : [];
+    final images = widget.restaurant.imageUrls ?? [];
+    final img2 = images.length > 0 ? images[0] : null;
+    final img3 = images.length > 1 ? images[1] : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
       child: Row(
         children: List.generate(2, (i) {
-          final imgUrl = images.length > i ? images[i] : null;
+          final imgUrl = i == 0 ? img2 : img3;
+          // Impression de l'URL de l'image affichée
+          if (imgUrl != null) {
+            // ignore: avoid_print
+            print('Affichage image [36m${i + 2}[39m pour ${widget.restaurant.name} : $imgUrl');
+          }
           return Expanded(
             child: Container(
               margin: EdgeInsets.only(left: i == 1 ? 4 : 0),
@@ -128,20 +158,15 @@ class _RestaurantCardState extends State<RestaurantCard> {
               ),
               clipBehavior: Clip.antiAlias,
               child: imgUrl != null
-                  ? Image.network(
-                      imgUrl,
+                  ? CachedNetworkImage(
+                      imageUrl: imgUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
-                      loadingBuilder: (c, child, progress) =>
-                          progress == null
-                              ? child
-                              : const Center(
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 1.5),
-                                ),
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.broken_image),
+                      placeholder: (context, url) => const Center(
+                        child: CircularProgressIndicator(strokeWidth: 1.5),
+                      ),
+                      errorWidget: (context, url, error) => const Icon(Icons.broken_image),
                     )
                   : const Icon(Icons.image_not_supported),
             ),
@@ -175,7 +200,7 @@ class _RestaurantCardState extends State<RestaurantCard> {
                 children: [
                   _buildTopInfo(),
                   const SizedBox(height: 2),
-                  _buildLogo(),          // ← ici on affiche le logo
+                  widget.logoWidget,
                   const SizedBox(height: 6),
                   Expanded(child: _buildPhotoRow()),
                 ],
