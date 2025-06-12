@@ -1,6 +1,7 @@
 // lib/screens/favorites_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/restaurant.dart';
 import '../services/favorite_service.dart';
@@ -31,7 +32,19 @@ class _FavoritesPageState extends State<FavoritesPage> {
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
+    _checkAndLoadFavorites();
+  }
+
+  Future<void> _checkAndLoadFavorites() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) {
+      setState(() {
+        _loading = false;
+        _favorites = [];
+      });
+      return;
+    }
+    await _loadFavorites();
   }
 
   Future<void> _loadFavorites() async {
@@ -71,23 +84,70 @@ class _FavoritesPageState extends State<FavoritesPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final headerHeight = screenHeight * 0.3;
 
+    final user = FirebaseAuth.instance.currentUser;
+    final isAnon = user == null || user.isAnonymous;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader(headerHeight, screenWidth)),
+          SliverToBoxAdapter(child: _buildHeader(headerHeight, screenWidth, isAnon)),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          _loading
-              ? const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              : SliverToBoxAdapter(child: _buildContent()),
+          if (_loading)
+            const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (isAnon)
+            const SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  'Connecte-toi pour enregistrer des favoris !',
+                  style: TextStyle(fontSize: 18, color: Colors.black54, fontFamily: 'InriaSans'),
+                ),
+              ),
+            )
+          else if (_favorites.isEmpty)
+            const SliverFillRemaining(
+              child: Center(
+                child: Text(
+                  'Aucun favori enregistré',
+                  style: TextStyle(fontSize: 18, color: Colors.black54, fontFamily: 'InriaSans'),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.66,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, i) {
+                    final resto = _favorites[i];
+                    return GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RestaurantDetailPage(restaurant: resto),
+                        ),
+                      ),
+                      child: RestaurantCard(restaurant: resto),
+                    );
+                  },
+                  childCount: _favorites.length,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(double height, double width) {
+  Widget _buildHeader(double height, double width, bool isAnon) {
     return Container(
       height: height,
       decoration: const BoxDecoration(
@@ -122,8 +182,9 @@ class _FavoritesPageState extends State<FavoritesPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Text(
-                  '\${_favorites.length} ' +
-                      (_favorites.length > 1 ? 'adresses enregistrées' : 'adresse enregistrée'),
+                  isAnon
+                      ? 'Connecte-toi pour enregistrer des adresses !'
+                      : '${_favorites.length} ' + (_favorites.length > 1 ? 'adresses enregistrées' : 'adresse enregistrée'),
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: height * 0.06,
@@ -170,41 +231,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    final left = <Widget>[];
-    final right = <Widget>[];
-    for (var i = 0; i < _favorites.length; i++) {
-      final item = Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RestaurantDetailPage(restaurant: _favorites[i]),
-            ),
-          ),
-          child: RestaurantCard(restaurant: _favorites[i]),
-        ),
-      );
-      if (i.isEven) {
-        left.add(item);
-      } else {
-        right.add(item);
-      }
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Column(children: left)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(children: right)),
-        ],
       ),
     );
   }

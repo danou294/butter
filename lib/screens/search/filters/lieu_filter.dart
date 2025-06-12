@@ -22,13 +22,13 @@ class LieuFilter extends StatelessWidget {
   }) : super(key: key);
 
   // Mapping affichage → clé Firestore
-  static const Map<String, String> _labelToKey = {
-    'Dans la rue':        'dans_la_rue',
-    'Dans une galerie':   'dans_une_galerie',
-    'Dans un musée':      'dans_un_musee',
-    'Dans un monument':   'dans_un_monument',
-    'Dans un hôtel':      'dans_un_hotel',
-    'Other':              'other_lieu',
+  static const Map<String, String> labelToKey = {
+    'Dans la rue':        'Dans la rue',
+    'Dans une galerie':   'Dans une galerie',
+    'Dans un musée':      'Dans un musée',
+    'Dans un monument':   'Dans un monument',
+    'Dans un hôtel':      'Dans un hôtel',
+    'Other':              'Other',
   };
 
   // Styles des chips, alignés sur MomentFilter
@@ -43,7 +43,7 @@ class LieuFilter extends StatelessWidget {
   static const double _fontSize    = 14.0;
 
   Widget _buildChip(String label) {
-    final key = _labelToKey[label]!;
+    final key = labelToKey[label]!;
     final isSelected = selected.contains(key);
 
     return InkWell(
@@ -77,7 +77,7 @@ class LieuFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labels = _labelToKey.keys.toList();
+    final labels = labelToKey.keys.toList();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       child: Wrap(

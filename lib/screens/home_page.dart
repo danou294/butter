@@ -25,7 +25,10 @@ class _HomePageState extends State<HomePage> {
   final UserService _userService = UserService();
 
   final PagingController<DocumentSnapshot?, Restaurant> _pagingController =
-      PagingController<DocumentSnapshot?, Restaurant>(firstPageKey: null);
+      PagingController<DocumentSnapshot?, Restaurant>(
+        firstPageKey: null,
+        getNextPageKey: (lastPage, items) => lastPage,
+      );
 
   String? _prenom;
 
@@ -33,7 +36,18 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initUser();
-    _pagingController.addPageRequestListener(_fetchPage);
+    _pagingController.addPageRequestListener((lastDoc) async {
+      final page = await _fetchPage(lastDoc);
+      final isLastPage = page.restaurants.length < _pageSize;
+      if (isLastPage) {
+        _pagingController.appendLastPage(List<Restaurant>.from(page.restaurants));
+      } else {
+        _pagingController.appendPage(
+          List<Restaurant>.from(page.restaurants),
+          page.lastDocument,
+        );
+      }
+    });
   }
 
   Future<void> _initUser() async {
@@ -47,23 +61,11 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _fetchPage(DocumentSnapshot? lastDoc) async {
-    try {
-      final result = await _restaurantService.fetchPage(
-        lastDocument: lastDoc,
-        pageSize: _pageSize,
-      );
-      if (result.lastDocument == null) {
-        _pagingController.appendLastPage(result.restaurants);
-      } else {
-        _pagingController.appendPage(
-          result.restaurants,
-          result.lastDocument,
-        );
-      }
-    } catch (error) {
-      _pagingController.error = error;
-    }
+  Future<PaginatedRestaurants> _fetchPage(DocumentSnapshot? lastDoc) async {
+    return await _restaurantService.fetchPage(
+      lastDocument: lastDoc,
+      pageSize: _pageSize,
+    );
   }
 
   @override
@@ -100,47 +102,49 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildHeader(headerHeight, width)),
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          PagedSliverGrid<DocumentSnapshot?, Restaurant>(
-            pagingController: _pagingController,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 0.66,
-            ),
-            builderDelegate: PagedChildBuilderDelegate<Restaurant>(
-              itemBuilder: (context, resto, index) => Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: RestaurantCard(
-                  restaurant: resto,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RestaurantDetailPage(restaurant: resto),
+      body: PagingListener<DocumentSnapshot?, Restaurant>(
+        controller: _pagingController,
+        builder: (context, PagingState<DocumentSnapshot?, Restaurant> state, fetchNextPage) {
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader(headerHeight, width)),
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+              PagedSliverGrid<DocumentSnapshot?, Restaurant>(
+                state: state,
+                fetchNextPage: fetchNextPage,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.66,
+                ),
+                builderDelegate: PagedChildBuilderDelegate<Restaurant>(
+                  itemBuilder: (context, resto, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: RestaurantCard(
+                      restaurant: resto,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RestaurantDetailPage(restaurant: resto),
+                        ),
+                      ),
                     ),
                   ),
+                  firstPageProgressIndicatorBuilder: (_) =>
+                      const Center(child: CircularProgressIndicator()),
+                  newPageProgressIndicatorBuilder: (_) => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator())),
+                  noItemsFoundIndicatorBuilder: (_) =>
+                      const Center(child: Text('Aucun restaurant trouvé')),
+                  firstPageErrorIndicatorBuilder: (_) =>
+                      const Center(child: Text('Erreur de chargement')),
                 ),
               ),
-              // Loader de la première page
-              firstPageProgressIndicatorBuilder: (_) =>
-                  const Center(child: CircularProgressIndicator()),
-              // Loader des pages suivantes
-              newPageProgressIndicatorBuilder: (_) => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: CircularProgressIndicator())),
-              // Aucune donnée trouvée
-              noItemsFoundIndicatorBuilder: (_) =>
-                  const Center(child: Text('Aucun restaurant trouvé')),
-              // Erreur de la première page
-              firstPageErrorIndicatorBuilder: (_) =>
-                  const Center(child: Text('Erreur de chargement')),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

@@ -34,26 +34,24 @@ class MomentFilter extends StatelessWidget {
 
   /// Mapping affichage → clés Firestore.
   /// "Brunch" coche toutes les clés brunch_*. Pas de chip séparé pour samedi/dimanche.
-  static const Map<String, List<String>> _labelToKeys = {
-    'Petit-déjeuner': ['petit_dejeuner'],
-    'Brunch':         ['brunch_general', 'brunch_samedi', 'brunch_dimanche'],
-    'Déjeuner':       ['dejeuner'],
-    'Goûter':         ['gouter'],
-    'Drinks':         ['drinks'],
-    'Dîner':          ['diner'],
-    'Apéro':          ['apero'],
+  static const Map<String, String> labelToKey = {
+    'Petit-déjeuner': 'Petit-déjeuner',
+    'Brunch': 'Brunch',
+    'Déjeuner': 'Déjeuner',
+    'Goûter': 'Goûter',
+    'Drinks': 'Drinks',
+    'Dîner': 'Dîner',
+    'Apéro': 'Apéro',
+    'Brunch le samedi': 'Brunch le samedi',
+    'Brunch le dimanche': 'Brunch le dimanche',
   };
 
   Widget _buildChip(String label) {
-    final keys = _labelToKeys[label]!;
-    final isSelected = keys.every(selected.contains);
+    final key = labelToKey[label]!;
+    final isSelected = selected.contains(key);
 
     return InkWell(
-      onTap: () {
-        for (var key in keys) {
-          onToggle(key, !selected.contains(key));
-        }
-      },
+      onTap: () => onToggle(key, !isSelected),
       borderRadius: BorderRadius.circular(6),
       child: Container(
         height: _chipHeight,
@@ -92,6 +90,8 @@ class MomentFilter extends StatelessWidget {
       'Drinks',
       'Dîner',
       'Apéro',
+      'Brunch le samedi',
+      'Brunch le dimanche',
     ];
 
     return Padding(

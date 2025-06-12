@@ -1,8 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle représentant un restaurant, avec mapping des localisations
+/// Modèle représentant un restaurant, adapté à la structure Firestore
 class Restaurant {
-  // Identifiants et libellés
   final String id;
   final String name;
   final String rawName;
@@ -26,25 +25,30 @@ class Restaurant {
   final String menuLink;
 
   // Catégories multi-choix
-  final List<String> restaurantType;
+  final List<String> types;
+  final List<String> moments;
+  final List<String> lieux;
   final List<String> ambiance;
-  final List<String> cuisine;
-  final List<String> priceRange;
-  final List<String> locationContext;
-  final List<String> services;
-  final List<String> restrictionsAlimentaires;
+  final String priceRange;
+  final List<String> cuisines;
+  final List<String> restrictions;
 
   // Terrasse
   final bool hasTerrace;
-  final List<String> terraceTypes;
+  final List<String> terraceLocs;
+
+  // Stations de métro
+  final List<String> stationsMetro;
+
+  // Informations complémentaires
+  final String moreInfo;
 
   // Médias
-  final List<String> photoUrls;
-  final String? nameTagUrl;
-
-  // Logo
   final String? logoUrl;
-  final List<String>? imageUrls;
+  final List<String> imageUrls;
+
+  final String specialiteTag;
+  final String tag;
 
   /// Map label→code postal pour les arrondissements
   static const Map<String, String> arrondissementMap = {
@@ -76,7 +80,7 @@ class Restaurant {
   Restaurant({
     required this.id,
     required this.name,
-    required this.rawName,
+    this.rawName = '',
     required this.fullAddress,
     required this.arrondissement,
     required this.commentaire,
@@ -87,19 +91,21 @@ class Restaurant {
     required this.instagram,
     required this.googleLink,
     required this.menuLink,
-    required this.restaurantType,
+    required this.types,
+    required this.moments,
+    required this.lieux,
     required this.ambiance,
-    required this.cuisine,
     required this.priceRange,
-    required this.locationContext,
-    required this.services,
-    required this.restrictionsAlimentaires,
+    required this.cuisines,
+    required this.restrictions,
     required this.hasTerrace,
-    required this.terraceTypes,
-    this.photoUrls = const [],
-    this.nameTagUrl,
+    required this.terraceLocs,
+    required this.stationsMetro,
+    this.moreInfo = '',
     this.logoUrl,
-    this.imageUrls,
+    this.imageUrls = const [],
+    this.specialiteTag = '',
+    this.tag = '',
   });
 
   /// Crée une instance depuis Firestore
@@ -110,68 +116,79 @@ class Restaurant {
 
   /// Crée une instance depuis un Map
   factory Restaurant.fromMap(String id, Map<String, dynamic> data) {
-    // Helper pour normaliser en List<String>
-    List<String> extract(dynamic value) {
-      if (value == null) return [];
-      if (value is Map) {
-        return value.entries
-            .where((e) => e.value == true)
-            .map((e) => e.key.toString())
-            .toList();
+    List<String> toList(dynamic v) {
+      if (v == null) return [];
+      if (v is List) return v.map((e) => e.toString()).toList();
+      if (v is String && v.isNotEmpty) {
+        // support simple comma-separated strings
+        return v.split(',').map((e) => e.trim()).toList();
       }
-      if (value is List) {
-        return value.map((e) => e.toString()).toList();
-      }
-      if (value is String) {
-        if (value.contains(',')) {
-          return value.split(',').map((e) => e.trim()).toList();
-        }
-        return [value];
+      if (v is Map) {
+        // map of bools
+        return v.entries.where((e) => e.value == true).map((e) => e.key.toString()).toList();
       }
       return [];
     }
 
-    final address = data['address'] as Map<String, dynamic>? ?? {};
-    final fullAddress = address['full'] as String? ?? '';
-    final arr = address['arrondissement'];
-    final arrondissement = arr is num ? arr.toInt() : 0;
-
-    // On gère à la fois les champs 'cuisine' et 'cuisines'
-    final rawCuisineField = data['cuisine'] ?? data['cuisines'];
+    String getAddressField(String key) {
+      final addr = data['address'];
+      if (addr is Map && addr[key] is String) return addr[key] as String;
+      return '';
+    }
+    int getAddressIntField(String key) {
+      final addr = data['address'];
+      if (addr is Map && addr[key] is int) return addr[key] as int;
+      if (addr is Map && addr[key] is num) return (addr[key] as num).toInt();
+      if (data[key] is int) return data[key] as int;
+      if (data[key] is num) return (data[key] as num).toInt();
+      return 0;
+    }
+    String getContactField(String key) {
+      final c = data['contact'];
+      if (c is Map && c[key] is String) return c[key] as String;
+      return '';
+    }
+    String getMapsField(String key) {
+      final m = data['maps'];
+      if (m is Map && m[key] is String) return m[key] as String;
+      return '';
+    }
 
     return Restaurant(
       id: id,
       name: data['name'] as String? ?? '',
       rawName: data['raw_name'] as String? ?? '',
-      fullAddress: fullAddress,
-      arrondissement: arrondissement,
+      fullAddress: getAddressField('full'),
+      arrondissement: getAddressIntField('arrondissement'),
       commentaire: data['commentaire'] as String? ?? '',
       hours: data['hours'] as String? ?? '',
-      phone: (data['contact'] as Map<String, dynamic>?)?['phone'] as String? ?? '',
-      website: (data['contact'] as Map<String, dynamic>?)?['website'] as String? ?? '',
-      reservationLink: (data['contact'] as Map<String, dynamic>?)?['reservation_link'] as String? ?? '',
-      instagram: (data['contact'] as Map<String, dynamic>?)?['instagram'] as String? ?? '',
-      googleLink: (data['maps'] as Map<String, dynamic>?)?['google_link'] as String? ?? '',
-      menuLink: (data['maps'] as Map<String, dynamic>?)?['menu_link'] as String? ?? '',
-      restaurantType: extract(data['type']),
-      ambiance: extract(data['ambiance']),
-      cuisine: extract(rawCuisineField),
-      priceRange: extract(data['price_range']),
-      locationContext: extract(data['location_context']),
-      services: extract(data['services']),
-      restrictionsAlimentaires: extract(data['restrictions_alimentaires']),
-      hasTerrace: (data['terrasse'] as Map<String, dynamic>?)?['has_terrasse'] as bool? ?? false,
-      terraceTypes: extract((data['terrasse'] as Map<String, dynamic>?)?['type']),
-      photoUrls: List<String>.from(data['photoUrls'] as List<dynamic>? ?? []),
-      nameTagUrl: data['nameTagUrl'] as String?,
+      phone: getContactField('phone'),
+      website: getContactField('website'),
+      reservationLink: getContactField('reservation_link'),
+      instagram: getContactField('instagram'),
+      googleLink: getMapsField('google_link'),
+      menuLink: getMapsField('menu_link'),
+      types: toList(data['types']),
+      moments: toList(data['moments']),
+      lieux: toList(data['lieux']),
+      ambiance: toList(data['ambiance']),
+      priceRange: data['price_range'] as String? ?? '',
+      cuisines: toList(data['cuisines']),
+      restrictions: toList(data['restrictions']),
+      hasTerrace: data['has_terrace'] as bool? ?? false,
+      terraceLocs: toList(data['terrace_locs']),
+      stationsMetro: toList(data['stations_metro']),
+      moreInfo: data['more_info'] as String? ?? '',
       logoUrl: data['logoUrl'] as String?,
-      imageUrls: (data['imageUrls'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
+      imageUrls: toList(data['imageUrls']),
+      specialiteTag: data['specialite_tag'] as String? ?? '',
+      tag: data['tag'] as String? ?? '',
     );
   }
 
-  /// Sérialise en Map pour Firestore ou cache
+  /// Sérialise en Map pour Firestore
   Map<String, dynamic> toJson() {
-    Map<String, dynamic> boolMap(List<String> keys) =>
+    Map<String, bool> boolMap(List<String> keys) =>
         {for (var k in keys) k: true};
 
     return {
@@ -193,21 +210,21 @@ class Restaurant {
         'google_link': googleLink,
         'menu_link': menuLink,
       },
-      'type': boolMap(restaurantType),
+      'types': boolMap(types),
+      'moments': boolMap(moments),
+      'lieux': boolMap(lieux),
       'ambiance': boolMap(ambiance),
-      'cuisines': boolMap(cuisine),
-      'price_range': boolMap(priceRange),
-      'location_context': boolMap(locationContext),
-      'services': boolMap(services),
-      'restrictions_alimentaires': boolMap(restrictionsAlimentaires),
-      'terrasse': {
-        'has_terrasse': hasTerrace,
-        'type': boolMap(terraceTypes),
-      },
-      'photoUrls': photoUrls,
-      'nameTagUrl': nameTagUrl,
+      'price_range': priceRange,
+      'cuisines': boolMap(cuisines),
+      'restrictions': boolMap(restrictions),
+      'has_terrace': hasTerrace,
+      'terrace_locs': boolMap(terraceLocs),
+      'stations_metro': boolMap(stationsMetro),
+      'more_info': moreInfo,
       'logoUrl': logoUrl,
       'imageUrls': imageUrls,
+      'specialite_tag': specialiteTag,
+      'tag': tag,
     };
   }
 }

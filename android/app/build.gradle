@@ -1,0 +1,9 @@
+android {
+    defaultConfig {
+        applicationId "com.example.butter"
+        minSdkVersion 23
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+    }
+} 

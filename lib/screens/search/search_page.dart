@@ -88,6 +88,8 @@ class _SearchPageState extends State<SearchPage>
     final comms    = <String>[];
     final moments  = <String>[];
     final cuisines = <String>[];
+    final restrictions = <String>[];
+    final ambiance = <String>[];
 
     for (var f in _selectedFilters) {
       if (Restaurant.directionGroups.containsKey(f)) {
@@ -98,6 +100,11 @@ class _SearchPageState extends State<SearchPage>
         comms.add(f);
       } else if (_allCuisines.contains(f)) {
         cuisines.add(f);
+      } else if (_isRestriction(f)) {
+        restrictions.add(f);
+      } else if (_isAmbiance(f)) {
+        final value = AmbianceFilter.keyToValue[f] ?? f;
+        ambiance.add(value);
       } else {
         moments.add(f);
       }
@@ -109,6 +116,8 @@ class _SearchPageState extends State<SearchPage>
       communes:        comms.isEmpty    ? null : comms,
       moments:         moments.isEmpty  ? null : moments,
       cuisines:        cuisines.isEmpty ? null : cuisines,
+      restrictions:    restrictions.isEmpty ? null : restrictions,
+      ambiance:        ambiance.isEmpty ? null : ambiance,
     );
 
     setState(() {
@@ -380,5 +389,26 @@ class _SearchPageState extends State<SearchPage>
       body: (_results == null) ? _buildFilterView() : _buildResultsView(),
       // la bottomNavigationBar reste dans MainNavigation
     );
+  }
+
+  bool _isRestriction(String f) {
+    const restrictionsList = [
+      'Casher (certifié)',
+      'Casher friendly (tout est casher mais pas de teouda)',
+      'Viande casher',
+      'Végétarien',
+      'Vegan',
+    ];
+    return restrictionsList.contains(f);
+  }
+
+  bool _isAmbiance(String f) {
+    const ambianceList = [
+      'classique',
+      'date',
+      'festif',
+      'intimiste',
+    ];
+    return ambianceList.contains(f.toLowerCase());
   }
 }

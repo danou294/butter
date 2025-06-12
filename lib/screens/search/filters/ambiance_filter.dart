@@ -21,12 +21,18 @@ class AmbianceFilter extends StatelessWidget {
     required this.onToggle,
   }) : super(key: key);
 
-  // Mapping affichage → clé Firestore
+  // Mapping affichage → clé Firestore et valeur technique
   static const Map<String, String> _labelToKey = {
     'Classique':       'ambiance_classique',
     'Intimiste/tamisé':'ambiance_intimiste',
     'Festif':          'ambiance_festif',
     'Date':            'ambiance_date',
+  };
+  static const Map<String, String> keyToValue = {
+    'ambiance_classique': 'Classique',
+    'ambiance_intimiste': 'Intimiste',
+    'ambiance_festif':    'Festif',
+    'ambiance_date':      'Date',
   };
 
   // Styles des chips (identiques à MomentFilter/CuisineFilter)
@@ -42,10 +48,11 @@ class AmbianceFilter extends StatelessWidget {
 
   Widget _buildChip(String label) {
     final key = _labelToKey[label]!;
-    final isSelected = selected.contains(key);
+    final value = keyToValue[key]!;
+    final isSelected = selected.contains(value);
 
     return InkWell(
-      onTap: () => onToggle(key, !isSelected),
+      onTap: () => onToggle(value, !isSelected),
       borderRadius: BorderRadius.circular(6),
       child: Container(
         height: _chipHeight,

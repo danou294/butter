@@ -49,6 +49,8 @@ class RestaurantService {
         query = query.startAfterDocument(lastDocument);
       }
       final snapshot = await query.get();
+      print('[DEBUG] Firestore snapshot docs count: [36m${snapshot.docs.length}[39m');
+      if (snapshot.docs.isEmpty) print('[DEBUG] Aucun document retourné par la requête Firestore.');
       final newList = snapshot.docs.map(_mapDocToRestaurant).toList();
       // Concatène et déduplique
       final map = <String, Restaurant>{};
@@ -61,7 +63,9 @@ class RestaurantService {
         restaurants: newList,
         lastDocument: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
       );
-    } catch (_) {
+    } catch (e, stack) {
+      print('[DEBUG] Erreur lors de la requête Firestore: $e');
+      print(stack);
       // Fallback cache complet
       return PaginatedRestaurants(restaurants: existing, lastDocument: null);
     }
@@ -80,23 +84,14 @@ class RestaurantService {
         return _mediaUrl(_photosPath, '${tag}$num.png');
       });
 
-  // Exemple de mapping pour les tokens d'images (à compléter selon tes besoins)
-  final Map<String, String> _imageTokens = {
-    'AKE2.png': '97db9b1d-ba1e-4ab4-a411-a3a4242cc7b7',
-    // Ajoute ici les autres images et tokens si besoin
-  };
-
-  /// Génère une URL de média depuis Firebase Storage, avec gestion optionnelle du token.
-  String _mediaUrl(String folder, String filename) {
-    final path = Uri.encodeComponent('$folder/$filename');
-    final token = _imageTokens[filename];
-    return token != null
-        ? 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media'
-        : 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media';
-  }
-
   /// Génère l'URL du logo (<TAG>1.png).
   String _generateLogoUrl(String tag) => _mediaUrl(_logosPath, '${tag}1.png');
+
+  /// Génère une URL de média depuis Firebase Storage.
+  String _mediaUrl(String folder, String filename) {
+    final path = Uri.encodeComponent('$folder/$filename');
+    return 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media';
+  }
 
   /// Transforme un DocumentSnapshot en Restaurant normalisé et ajoute URLs.
   Restaurant _mapDocToRestaurant(DocumentSnapshot doc) {
@@ -105,12 +100,27 @@ class RestaurantService {
     final logoUrl = tag.isNotEmpty ? _generateLogoUrl(tag) : null;
     final imageUrls = tag.isNotEmpty ? _generateImageUrls(tag) : <String>[];
 
+    // DEBUG : Affiche le contenu brut et les champs critiques
+    print('[DEBUG] Mapping doc ${doc.id}');
+    print('[DEBUG] raw: ' + raw.toString());
+    print('[DEBUG] Adresse: ' + (raw['Adresse']?.toString() ?? 'null'));
+    print('[DEBUG] Arrondissement: ' + (raw['Arrondissement']?.toString() ?? 'null'));
+    print('[DEBUG] Contact: ' + (raw['Téléphone']?.toString() ?? 'null') + ', ' + (raw['Site web']?.toString() ?? 'null'));
+    print('[DEBUG] Cuisines: ' + (raw['cuisines']?.toString() ?? 'null'));
+    print('[DEBUG] Types: ' + (raw['types']?.toString() ?? 'null'));
+    print('[DEBUG] Ambiance: ' + (raw['ambiance']?.toString() ?? 'null'));
+    print('[DEBUG] Lieux: ' + (raw['lieux']?.toString() ?? 'null'));
+    print('[DEBUG] Moments: ' + (raw['moments']?.toString() ?? 'null'));
+    print('[DEBUG] Restrictions: ' + (raw['restrictions']?.toString() ?? 'null'));
+    print('[DEBUG] Terrace_locs: ' + (raw['terrace_locs']?.toString() ?? 'null'));
+    print('[DEBUG] Station(s) de métro à proximité: ' + (raw['Station(s) de métro à proximité']?.toString() ?? 'null'));
+
     final data = <String, dynamic>{
       'name': raw['Vrai Nom'] ?? raw['rawName'] ?? '',
       'raw_name': tag,
       'address': {
         'full': raw['Adresse'] ?? '',
-        'arrondissement': raw['Arrondissement'] ?? 0,
+        'arrondissement': raw['Arrondissement'] ?? raw['arrondissement'] ?? 0,
       },
       'hours': raw['Horaires'] ?? '',
       'commentaire': raw['more_info'] ?? '',
@@ -124,36 +134,17 @@ class RestaurantService {
         'google_link': raw['Lien Google'] ?? '',
         'menu_link': raw['Lien Menu'] ?? '',
       },
-      'type': raw['types'] is String ? [raw['types']] : (raw['types'] as List?) ?? <String>[],
-      'ambiance': {
-        'classique': raw['ambiance_classique'] ?? false,
-        'date': raw['ambiance_date'] ?? false,
-        'festif': raw['ambiance_festif'] ?? false,
-        'intimiste': raw['ambiance_intimiste'] ?? false,
-      },
-      'cuisine': raw['cuisines'] is String ? [raw['cuisines']] : (raw['cuisines'] as List?) ?? <String>[],
-      'price_range': raw['price_range'] is String ? [raw['price_range']] : (raw['price_range'] as List?) ?? <String>[],
-      'services': {
-        'dejeuner': raw['dejeuner'] ?? false,
-        'diner': raw['diner'] ?? false,
-        'drinks': raw['drinks'] ?? false,
-        'apero': raw['apero'] ?? false,
-        'brunch_dimanche': raw['brunch_dimanche'] ?? false,
-        'brunch_samedi': raw['brunch_samedi'] ?? false,
-        'brunch_general': raw['brunch_general'] ?? false,
-        'brunch_toute_la_semaine': raw['brunch_toute_la_semaine'] ?? false,
-        'gouter': raw['gouter'] ?? false,
-        'petit_dejeuner': raw['petit_dejeuner'] ?? false,
-      },
-      'location_context': {
-        'rue': raw['dans_la_rue'] ?? false,
-        'hotel': raw['dans_un_hotel'] ?? false,
-        'monument': raw['dans_un_monument'] ?? false,
-        'musee': raw['dans_un_musee'] ?? false,
-        'galerie': raw['dans_une_galerie'] ?? false,
-      },
-      'restrictions_alimentaires': raw['restrictions_alimentaires'] ?? <String, bool>{},
-      'photoUrls': raw['photoUrls'] is List ? List<String>.from(raw['photoUrls']) : <String>[],
+      'types': raw['types'] is List ? raw['types'] : (raw['types'] is String && raw['types'].isNotEmpty) ? [raw['types']] : <String>[],
+      'moments': raw['moments'] is List ? raw['moments'] : (raw['moments'] is String && raw['moments'].isNotEmpty) ? [raw['moments']] : <String>[],
+      'lieux': raw['lieux'] is List ? raw['lieux'] : (raw['lieux'] is String && raw['lieux'].isNotEmpty) ? [raw['lieux']] : <String>[],
+      'ambiance': raw['ambiance'] is List ? raw['ambiance'] : (raw['ambiance'] is String && raw['ambiance'].isNotEmpty) ? [raw['ambiance']] : <String>[],
+      'price_range': raw['price_range'] ?? '',
+      'cuisines': raw['cuisines'] is List ? raw['cuisines'] : (raw['cuisines'] is String && raw['cuisines'].isNotEmpty) ? [raw['cuisines']] : <String>[],
+      'restrictions': raw['restrictions'] is List ? raw['restrictions'] : (raw['restrictions'] is String && raw['restrictions'].isNotEmpty) ? [raw['restrictions']] : <String>[],
+      'has_terrace': raw['has_terrace'] ?? false,
+      'terrace_locs': raw['terrace_locs'] is List ? raw['terrace_locs'] : (raw['terrace_locs'] is String && raw['terrace_locs'].isNotEmpty) ? [raw['terrace_locs']] : <String>[],
+      'stations_metro': raw['Station(s) de métro à proximité'] is List ? raw['Station(s) de métro à proximité'] : (raw['Station(s) de métro à proximité'] is String && raw['Station(s) de métro à proximité'].isNotEmpty) ? [raw['Station(s) de métro à proximité']] : <String>[],
+      'more_info': raw['more_info'] ?? '',
       'logoUrl': logoUrl,
       'imageUrls': imageUrls,
     };

@@ -107,13 +107,11 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
               ),
               firstPageProgressIndicatorBuilder: (_) =>
                   const Center(child: CircularProgressIndicator()),
-              newPageProgressIndicatorBuilder: (_) =>
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
+              newPageProgressIndicatorBuilder: (_) => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CircularProgressIndicator())),
               noItemsFoundIndicatorBuilder: (_) =>
-                  const Center(child: Text('Aucun résultat trouvé')),
+                  const Center(child: Text('Aucun restaurant trouvé')),
               firstPageErrorIndicatorBuilder: (_) =>
                   const Center(child: Text('Erreur de chargement')),
             ),
@@ -133,75 +131,97 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.54),
-        padding: const EdgeInsets.only(bottom: 20),
+        color: Colors.black.withOpacity(0.45),
+        padding: const EdgeInsets.only(bottom: 20, top: 10),
         child: SafeArea(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: SizedBox(
-                    width: width * 0.55,
-                    height: height * 0.12,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SearchPage()),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white),
-                        foregroundColor: Colors.white,
-                        textStyle: TextStyle(
-                          fontSize: height * 0.035,
-                          fontFamily: 'InriaSans',
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('Modifier mes filtres'),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  'Résultats',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: height * 0.12,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'InriaSerif',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  '${_pagingController.itemList?.length ?? 0} ' +
-                  ((_pagingController.itemList?.length ?? 0) > 1
-                      ? 'adresses trouvées'
-                      : 'adresse trouvée'),
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: height * 0.06,
-                    fontFamily: 'InriaSans',
-                  ),
-                ),
-              ),
+              _buildHeaderTop(width, height),
+              _buildHeaderText(height, width),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderTop(double width, double height) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          SizedBox(
+            width: width * 0.3,
+            child: Image.asset('assets/icon/app_icon2.png', fit: BoxFit.contain),
+          ),
+          SizedBox(
+            width: width * 0.4,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const SearchPage()),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white),
+                foregroundColor: Colors.white,
+                textStyle: TextStyle(
+                  fontSize: height * 0.035,
+                  fontFamily: 'InriaSans',
+                ),
+                shape:
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Modifier mes filtres'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderText(double height, double width) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Résultats',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: height * 0.06,
+              fontFamily: 'InriaSerif',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${_pagingController.itemList?.length ?? 0} adresses trouvées',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: height * 0.12,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'InriaSerif',
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: width * 0.75,
+            child: Text(
+              "Voici les adresses qui correspondent à ta recherche !",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: height * 0.06,
+                fontFamily: 'InriaSans',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

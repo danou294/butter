@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'search/search_page.dart';
 import 'favorites_page.dart';
-import 'profile_page.dart';
+import 'AccountPage.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({Key? key}) : super(key: key);
@@ -18,7 +18,7 @@ class MainNavigationState extends State<MainNavigation> {
     HomePage(),
     SearchPage(),      // notre SearchPage refondue
     FavoritesPage(),
-    ProfilePage(),
+    AccountPage(),
   ];
   void onTab(int i) => setState(() => _selectedIndex = i);
   @override

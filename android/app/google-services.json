@@ -1,26 +1,43 @@
 {
   "project_info": {
-    "project_number": "412954167340",
-    "project_id": "butter-begin",
-    "storage_bucket": "butter-begin.firebasestorage.app"
+    "project_number": "743945650254",
+    "project_id": "butter-vdef",
+    "storage_bucket": "butter-vdef.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:412954167340:android:793eead7577a30276a6989",
+        "mobilesdk_app_id": "1:743945650254:android:e0d68f4f4aef282141831f",
         "android_client_info": {
           "package_name": "com.example.butter"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "743945650254-rmenafvr1rrkhovq6a8plr1cbk4ahvpv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCMz5dmP-GxaVbIHY4HXQdeWsWELXz-9vs"
+          "current_key": "AIzaSyDuEj74dqtNUtKw-gqEAhATR0F7hF3AT1A"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "743945650254-rmenafvr1rrkhovq6a8plr1cbk4ahvpv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "743945650254-f7fkkmfovkct4fvrt3btmmv3e6lojgs8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dev.butterappProfile3"
+              }
+            }
+          ]
         }
       }
     }

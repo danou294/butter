@@ -23,34 +23,17 @@ class RestrictionsFilter extends StatelessWidget {
     required this.onToggle,
   }) : super(key: key);
 
-  Widget _buildChip(String label) {
-    final isSelected = selected.contains(label);
-    return GestureDetector(
-      onTap: () => onToggle(label, !isSelected),
-      child: Container(
-        height: _chipHeight,
-        padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? _selectedBg : _unselectedBg,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: _fontFamilySans,
-            fontSize: 13,
-            color: _labelColor,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Mapping : label affiché -> valeur technique
+    const labelToValue = {
+      'Casher (certifié)': 'Casher (certifié)',
+      'Casher friendly\n(tout est casher\nmais pas de teouda)': 'Casher friendly (tout est casher mais pas de teouda)',
+      'Viande casher': 'Viande casher',
+      'Végétarien': 'Végétarien',
+      'Vegan': 'Vegan',
+    };
+    // Labels pour l'affichage (avec retour à la ligne)
     const labels = [
       'Casher (certifié)',
       'Casher friendly\n(tout est casher\nmais pas de teouda)',
@@ -58,6 +41,35 @@ class RestrictionsFilter extends StatelessWidget {
       'Végétarien',
       'Vegan',
     ];
+
+    String valueForLabel(String label) => labelToValue[label] ?? label;
+    bool isSelected(String label) => selected.contains(valueForLabel(label));
+
+    Widget buildChip(String label) {
+      final isSel = isSelected(label);
+      return GestureDetector(
+        onTap: () => onToggle(valueForLabel(label), !isSel),
+        child: Container(
+          height: _chipHeight,
+          padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSel ? _selectedBg : _unselectedBg,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label.replaceAll('\\n', '\n'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: _fontFamilySans,
+              fontSize: 13,
+              color: _labelColor,
+              fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      );
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -67,11 +79,11 @@ class RestrictionsFilter extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildChip(labels[0]),
+              buildChip(labels[0]),
               const SizedBox(width: _spacing),
-              _buildChip(labels[1]),
+              buildChip(labels[1]),
               const SizedBox(width: _spacing),
-              _buildChip(labels[2]),
+              buildChip(labels[2]),
             ],
           ),
           const SizedBox(height: _spacing),
@@ -79,9 +91,9 @@ class RestrictionsFilter extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildChip(labels[3]),
+              buildChip(labels[3]),
               const SizedBox(width: _spacing),
-              _buildChip(labels[4]),
+              buildChip(labels[4]),
             ],
           ),
         ],

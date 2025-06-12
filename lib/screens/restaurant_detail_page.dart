@@ -36,18 +36,19 @@ class RestaurantDetailPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // Slider d'images
-          if (r.photoUrls.isNotEmpty)
+          if (r.imageUrls.isNotEmpty)
             SizedBox(
               height: 200,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: r.photoUrls.length,
+                itemCount: r.imageUrls.length,
                 itemBuilder: (_, i) => Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: Image.asset(
-                    r.photoUrls[i],
+                  child: Image.network(
+                    r.imageUrls[i],
                     width: 300,
                     fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                   ),
                 ),
               ),
@@ -107,29 +108,26 @@ class RestaurantDetailPage extends StatelessWidget {
           ],
 
           // Type de restaurant
-          _buildChipsSection('Catégories', r.restaurantType),
+          _buildChipsSection('Catégories', r.types),
 
           // Cuisine
-          _buildChipsSection('Cuisine', r.cuisine),
+          _buildChipsSection('Cuisine', r.cuisines),
 
           // Ambiance
           _buildChipsSection('Ambiance', r.ambiance),
 
-          // Services (inclut petit-déjeuner, brunch, déjeuner, etc.)
-          _buildChipsSection('Services', r.services),
-
           // Restrictions alimentaires
-          _buildChipsSection('Restrictions', r.restrictionsAlimentaires),
+          _buildChipsSection('Restrictions', r.restrictions),
 
           // Terrasse
           if (r.hasTerrace) ...[
             const Text('Terrasse', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            if (r.terraceTypes.isNotEmpty)
+            if (r.terraceLocs.isNotEmpty)
               Wrap(
                 spacing: 6,
                 children:
-                    r.terraceTypes.map((t) => Chip(label: Text(t))).toList(),
+                    r.terraceLocs.map((t) => Chip(label: Text(t))).toList(),
               )
             else
               const Text('Terrasse disponible'),

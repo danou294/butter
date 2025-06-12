@@ -24,27 +24,161 @@ class SearchService {
     List<String>? lieux,
     List<String>? cuisines,
     List<String>? prix,
+    List<String>? restrictions,
+    List<String>? ambiance,
   }) async {
+    print('[DEBUG] ambiance envoyé au service : ${ambiance?.toString() ?? 'null'}');
+    print('[DEBUG] Filtres transmis au service :');
+    print('  zones:           ' + (zones?.toString() ?? 'null'));
+    print('  arrondissements: ' + (arrondissements?.toString() ?? 'null'));
+    print('  communes:        ' + (communes?.toString() ?? 'null'));
+    print('  moments:         ' + (moments?.toString() ?? 'null'));
+    print('  lieux:           ' + (lieux?.toString() ?? 'null'));
+    print('  cuisines:        ' + (cuisines?.toString() ?? 'null'));
+    print('  prix:            ' + (prix?.toString() ?? 'null'));
+    print('  restrictions:    ' + (restrictions?.toString() ?? 'null'));
+    print('  ambiance:        ' + (ambiance?.toString() ?? 'null'));
     // 1) Construction des groupes de codes postaux (OR géo)
     final geoGroups = _buildGeoGroups(zones, arrondissements, communes);
 
     // 2) Exécution des requêtes Firestore et enrichissement média
     final Map<String, Restaurant> resultsMap = {};
     for (var codes in geoGroups) {
-      // Appliquer tous les filtres
-      var query = _applyFilters(
+      // PATCH restrictions : deux requêtes si restrictions non vide
+      if ((restrictions ?? []).isNotEmpty) {
+        final baseQuery = _firestore.collection('restaurants') as Query<Map<String, dynamic>>;
+        // 1. arrayContainsAny (cas array)
+        final queryArray = _applyFilters(
+          baseQuery,
+          codes: codes,
+          moments: moments,
+          lieux: lieux,
+          specialites: cuisines,
+          prix: prix,
+          restrictions: null,
+          ambiance: ambiance,
+        );
+        final snapArray = await queryArray.where('restrictions', arrayContainsAny: restrictions!).get();
+        for (var doc in snapArray.docs) {
+          resultsMap[doc.id] = _mapDocToRestaurant(doc);
+        }
+        // 2. isEqualTo (cas string)
+        for (var r in restrictions!) {
+          final queryStr = _applyFilters(
+            baseQuery,
+            codes: codes,
+            moments: moments,
+            lieux: lieux,
+            specialites: cuisines,
+            prix: prix,
+            restrictions: null,
+            ambiance: ambiance,
+          );
+          final snapStr = await queryStr.where('restrictions', isEqualTo: r).get();
+          for (var doc in snapStr.docs) {
+            resultsMap[doc.id] = _mapDocToRestaurant(doc);
+          }
+        }
+        continue;
+      }
+
+      // PATCH ambiance : requêtes multiples si ambiance non vide
+      if ((ambiance ?? []).isNotEmpty) {
+        final baseQuery = _firestore.collection('restaurants') as Query<Map<String, dynamic>>;
+        // 1. arrayContainsAny (cas array)
+        final queryArray = _applyFilters(
+          baseQuery,
+          codes: codes,
+          moments: moments,
+          lieux: lieux,
+          specialites: cuisines,
+          prix: prix,
+          restrictions: restrictions,
+          ambiance: null,
+        );
+        final snapArray = await queryArray.where('ambiance', arrayContainsAny: ambiance!).get();
+        for (var doc in snapArray.docs) {
+          resultsMap[doc.id] = _mapDocToRestaurant(doc);
+        }
+        // 2. isEqualTo (cas string)
+        for (var a in ambiance!) {
+          if (a.contains('/')) continue; // Firestore interdit '/' dans les noms de champs
+          final queryStr = _applyFilters(
+            baseQuery,
+            codes: codes,
+            moments: moments,
+            lieux: lieux,
+            specialites: cuisines,
+            prix: prix,
+            restrictions: restrictions,
+            ambiance: null,
+          );
+          final snapStr = await queryStr.where('ambiance.$a', isEqualTo: true).get();
+          for (var doc in snapStr.docs) {
+            resultsMap[doc.id] = _mapDocToRestaurant(doc);
+          }
+        }
+        // 3. map de booléens : une requête par valeur
+        for (var a in ambiance!) {
+          if (a.contains('/')) continue; // Firestore interdit '/' dans les noms de champs
+          final queryBool = _applyFilters(
+            baseQuery,
+            codes: codes,
+            moments: moments,
+            lieux: lieux,
+            specialites: cuisines,
+            prix: prix,
+            restrictions: restrictions,
+            ambiance: null,
+          );
+          final snapBool = await queryBool.where('ambiance.$a', isEqualTo: true).get();
+          for (var doc in snapBool.docs) {
+            resultsMap[doc.id] = _mapDocToRestaurant(doc);
+          }
+        }
+        continue;
+      }
+
+      // --- PATCH ARRONDISSEMENT ---
+      // 1. Requête sur 'Arrondissement' (majuscule)
+      var queryMaj = _applyFilters(
         _firestore.collection('restaurants') as Query<Map<String, dynamic>>,
-        codes: codes,
+        codes: [], // on ne filtre pas ici, on le fait juste après
         moments: moments,
         lieux: lieux,
-        cuisines: cuisines,
+        specialites: cuisines,
         prix: prix,
+        restrictions: restrictions,
+        ambiance: ambiance,
       );
+      if (codes.isNotEmpty) {
+        queryMaj = codes.length == 1
+            ? queryMaj.where('Arrondissement', isEqualTo: codes.first)
+            : queryMaj.where('Arrondissement', whereIn: codes);
+      }
+      final snapMaj = await queryMaj.get();
+      for (var doc in snapMaj.docs) {
+        resultsMap[doc.id] = _mapDocToRestaurant(doc);
+      }
 
-      // Exécution
-      final snap = await query.get();
-      for (var doc in snap.docs) {
-        // on passe par fromMap pour récupérer logos + images
+      // 2. Requête sur 'arrondissement' (minuscule)
+      var queryMin = _applyFilters(
+        _firestore.collection('restaurants') as Query<Map<String, dynamic>>,
+        codes: [], // on ne filtre pas ici, on le fait juste après
+        moments: moments,
+        lieux: lieux,
+        specialites: cuisines,
+        prix: prix,
+        restrictions: restrictions,
+        ambiance: ambiance,
+      );
+      if (codes.isNotEmpty) {
+        queryMin = codes.length == 1
+            ? queryMin.where('arrondissement', isEqualTo: codes.first)
+            : queryMin.where('arrondissement', whereIn: codes);
+      }
+      final snapMin = await queryMin.get();
+      for (var doc in snapMin.docs) {
         resultsMap[doc.id] = _mapDocToRestaurant(doc);
       }
     }
@@ -132,41 +266,78 @@ class SearchService {
     required List<int> codes,
     List<String>? moments,
     List<String>? lieux,
-    List<String>? cuisines,
+    List<String>? specialites,
     List<String>? prix,
+    List<String>? restrictions,
+    List<String>? ambiance,
   }) {
     // localisation
     if (codes.isNotEmpty) {
       query = codes.length == 1
-          ? query.where('address.arrondissement', isEqualTo: codes.first)
-          : query.where('address.arrondissement', whereIn: codes);
+          ? query.where('Arrondissement', isEqualTo: codes.first)
+          : query.where('Arrondissement', whereIn: codes);
     }
     // moments
     for (var m in moments ?? []) {
-      query = query.where(m, isEqualTo: true);
+      query = query.where('moments', arrayContains: m);
     }
     // lieux
     for (var l in lieux ?? []) {
-      query = query.where('location_context.$l', isEqualTo: true);
+      query = query.where('lieux', arrayContains: l);
     }
-    // cuisines
-    if ((cuisines ?? []).isNotEmpty) {
-      query = query.where('cuisines', arrayContainsAny: cuisines!);
+    // ambiance
+    for (var a in ambiance ?? []) {
+      if (a.contains('/')) continue; // Firestore interdit '/' dans les noms de champs
+      query = query.where('ambiance.$a', isEqualTo: true);
+    }
+    // spécialité
+    if ((specialites ?? []).isNotEmpty) {
+      if (specialites!.length == 1) {
+        query = query.where('specialite_tag', isEqualTo: specialites.first);
+      } else {
+        query = query.where('specialite_tag', whereIn: specialites);
+      }
     }
     // prix
     if ((prix ?? []).isNotEmpty) {
       query = query.where('price_range', arrayContainsAny: prix!);
     }
+    // restrictions
+    if ((restrictions ?? []).isNotEmpty) {
+      query = query.where('restrictions', arrayContainsAny: restrictions!);
+    }
     return query;
+  }
+
+  // Ajout : Génération des URLs comme dans RestaurantService
+  List<String> _generateImageUrls(String tag, {int min = 2, int max = 6}) =>
+      List.generate(max - min + 1, (i) {
+        final num = i + min;
+        return _mediaUrl(_photosPath, '${tag}$num.png');
+      });
+
+  String _generateLogoUrl(String tag) => _mediaUrl(_logosPath, '${tag}1.png');
+
+  String _mediaUrl(String folder, String filename) {
+    final path = Uri.encodeComponent('$folder/$filename');
+    // Pas de gestion de token ici, à adapter si besoin
+    return 'https://firebasestorage.googleapis.com/v0/b/$_bucketName/o/$path?alt=media';
   }
 
   /// Transforme un DocumentSnapshot en Restaurant et génère logos + images.
   Restaurant _mapDocToRestaurant(DocumentSnapshot doc) {
     // on récupère tout le data brut
     final raw = doc.data() as Map<String, dynamic>? ?? {};
+    final tag = (raw['tag'] ?? '').toString().toUpperCase();
+    final logoUrl = tag.isNotEmpty ? _generateLogoUrl(tag) : null;
+    final imageUrls = tag.isNotEmpty ? _generateImageUrls(tag) : <String>[];
 
     // on crée un Restaurant depuis le Map (il génère déjà logoUrl+imageUrls)
     // merci à Restaurant.fromMap qui contient la logique media
-    return Restaurant.fromFirestore(doc);
+    // On injecte logoUrl et imageUrls dans le map si besoin
+    final data = Map<String, dynamic>.from(raw);
+    data['logoUrl'] = logoUrl;
+    data['imageUrls'] = imageUrls;
+    return Restaurant.fromMap(doc.id, data);
   }
 }

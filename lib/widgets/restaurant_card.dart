@@ -7,23 +7,6 @@ class RestaurantCard extends StatefulWidget {
   final Restaurant restaurant;
   final VoidCallback? onTap;
 
-  // Affichage du logo juste sous les attributs
-  Widget get logoWidget {
-    final url = restaurant.logoUrl;
-    if (url != null && url.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Image.network(
-          url,
-          height: 40,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
-        ),
-      );
-    }
-    return const SizedBox(height: 40);
-  }
-
   const RestaurantCard({
     Key? key,
     required this.restaurant,
@@ -42,12 +25,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
   void initState() {
     super.initState();
     _loadFavoriteStatus();
-    // Impression des images extraites (imageUrls)
-    final images = widget.restaurant.imageUrls ?? [];
-    for (var i = 0; i < images.length; i++) {
-      // ignore: avoid_print
-      print('Image ${i + 2} pour ${widget.restaurant.name} : ${images[i]}');
-    }
   }
 
   Future<void> _loadFavoriteStatus() async {
@@ -73,8 +50,8 @@ class _RestaurantCardState extends State<RestaurantCard> {
   Widget _buildTopInfo() {
     final r = widget.restaurant;
     final arr = r.arrondissement > 0 ? r.arrondissement.toString() : '';
-    final cuisine = r.cuisine.isNotEmpty ? _capitalize(r.cuisine.first) : '';
-    final price = r.priceRange.isNotEmpty ? r.priceRange.first : '';
+    final cuisine = r.cuisines.isNotEmpty ? _capitalize(r.cuisines.first) : '';
+    final price = r.priceRange.isNotEmpty ? r.priceRange : '';
     final parts = [arr, cuisine, price].where((p) => p.isNotEmpty).toList();
 
     return Padding(
@@ -93,19 +70,18 @@ class _RestaurantCardState extends State<RestaurantCard> {
 
   /// Affiche le logo (ou placeholder si absent)
   Widget _buildLogo() {
-    final logoUrl = widget.restaurant.nameTagUrl;
+    final logoUrl = widget.restaurant.logoUrl;
     if (logoUrl != null && logoUrl.isNotEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Image.network(
           logoUrl,
-          height: 36,
+          height: 40,
           fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => _placeholderLogo(),
         ),
       );
     }
-
     return _placeholderLogo();
   }
 
@@ -116,8 +92,8 @@ class _RestaurantCardState extends State<RestaurantCard> {
         : '?';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: Colors.grey.shade300,
         shape: BoxShape.circle,
@@ -135,7 +111,7 @@ class _RestaurantCardState extends State<RestaurantCard> {
   }
 
   Widget _buildPhotoRow() {
-    final images = widget.restaurant.imageUrls ?? [];
+    final images = widget.restaurant.imageUrls;
     final img2 = images.length > 0 ? images[0] : null;
     final img3 = images.length > 1 ? images[1] : null;
 
@@ -144,11 +120,6 @@ class _RestaurantCardState extends State<RestaurantCard> {
       child: Row(
         children: List.generate(2, (i) {
           final imgUrl = i == 0 ? img2 : img3;
-          // Impression de l'URL de l'image affichée
-          if (imgUrl != null) {
-            // ignore: avoid_print
-            print('Affichage image [36m${i + 2}[39m pour ${widget.restaurant.name} : $imgUrl');
-          }
           return Expanded(
             child: Container(
               margin: EdgeInsets.only(left: i == 1 ? 4 : 0),
@@ -200,7 +171,7 @@ class _RestaurantCardState extends State<RestaurantCard> {
                 children: [
                   _buildTopInfo(),
                   const SizedBox(height: 2),
-                  widget.logoWidget,
+                  _buildLogo(),
                   const SizedBox(height: 6),
                   Expanded(child: _buildPhotoRow()),
                 ],

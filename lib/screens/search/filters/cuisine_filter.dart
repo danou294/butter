@@ -23,24 +23,14 @@ class CuisineFilter extends StatelessWidget {
 
   // Mapping affichage → clé Firestore
   static const Map<String, String> _labelToKey = {
-    'Africain': 'Africain',
-    'Américain': 'Américain',
-    'Chinois': 'Chinois',
-    'Coréen': 'Coréen',
-    'Français': 'Français',
-    'Grec': 'Grec',
-    'Indien': 'Indien',
-    'Israélien': 'Israélien',
     'Italien': 'Italien',
-    'Japonais': 'Japonais',
-    'Libanais': 'Libanais',
-    'Mexicain': 'Mexicain',
-    'Oriental': 'Oriental',
-    'Péruvien': 'Péruvien',
-    'Sud-Américain': 'Sud-Américain',
-    'Thaï': 'Thaï',
-    'Vietnamien': 'Vietnamien',
-    'Other': 'Other',
+    'Méditerranéen': 'Méditerranéen',
+    'Asiatique': 'Asiatique',
+    'Sud Américain': 'Sud Américain',
+    'Français': 'Français',
+    'Indien': 'Indien',
+    'Américain': 'Américain',
+    'Africain': 'Africain',
   };
 
   // Styles des chips, alignés sur le MomentFilter
